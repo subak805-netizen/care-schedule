@@ -369,12 +369,12 @@ function renderRoster(){
       <label><input type="checkbox" id="af-night" checked> 야간 다음날 주간 금지</label>
       <button class="btn primary" id="afRun">편성 실행</button>
     </div>
-    <div style="margin-top:10px"><b style="font-size:13px">직원별 연차일</b> <span class="hint">쉼표로 여러 날 (예: 5, 12) — 적은 날은 연차로 고정되고 그날을 피해서 짭니다. 비워두면 위의 연차 개수만큼 자동 배정</span>
+    <div style="margin-top:10px"><b style="font-size:13px">직원별 연차일</b> <span class="hint">여러 날은 쉼표(5, 12), 연속은 붙임표(12-14 = 12·13·14일) — 적은 날은 연차로 고정되고 그날을 피해서 짭니다. 비워두면 위의 연차 개수만큼 자동 배정</span>
       <div class="row" style="margin-top:6px;gap:8px">
       ${(unit?unitStaff(unit.id):[]).map(p=>{
         const cur=(S.roster[ym]&&S.roster[ym][p.id])||{};
         const vdays=Object.keys(cur).filter(d=>cur[d]==='V').map(Number).sort((a,b)=>a-b).join(', ');
-        return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px">${esc(p.name)} <input type="text" data-vdays="${p.id}" value="${vdays}" placeholder="예: 5" style="width:70px;padding:4px 6px"></label>`;
+        return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px">${esc(p.name)} <input type="text" data-vdays="${p.id}" value="${vdays}" placeholder="예: 5, 12-14" style="width:110px;padding:4px 6px"></label>`;
       }).join('')}
       </div>
     </div>
@@ -505,7 +505,16 @@ function bindRosterTop(){
     for(const p of people){
       const inp=root.querySelector(`input[data-vdays="${p.id}"]`);
       if(!inp)continue;
-      const days=[...new Set(inp.value.split(/[,\s]+/).map(s=>parseInt(s,10)).filter(d=>d>=1&&d<=gnd))];
+      const days=new Set();
+      for(const tok of inp.value.split(/[,\s]+/)){
+        const range=tok.match(/^(\d+)\s*[-~]\s*(\d+)$/); // "12-14" 또는 "12~14" = 연속 연차
+        if(range){
+          for(let d=+range[1];d<=Math.min(+range[2],gnd);d++)if(d>=1)days.add(d);
+        }else{
+          const d=parseInt(tok,10);
+          if(d>=1&&d<=gnd)days.add(d);
+        }
+      }
       const curP=(S.roster[S.ui.ym]||{})[p.id]||{};
       for(const d of Object.keys(curP))if(curP[d]==='V')setCell(S.ui.ym,p.id,+d,'');
       for(const d of days)setCell(S.ui.ym,p.id,d,'V');
