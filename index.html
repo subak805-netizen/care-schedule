@@ -117,6 +117,7 @@ table.set input[type=text]{width:110px}
   <nav>
     <button data-tab="roster" class="on">근무표</button>
     <button data-tab="calc">휴일계산</button>
+    <button data-tab="pay">급여</button>
     <button data-tab="settings">설정</button>
   </nav>
   <div class="spacer"></div>
@@ -125,6 +126,7 @@ table.set input[type=text]{width:110px}
 <main>
   <section id="tab-roster"></section>
   <section id="tab-calc" style="display:none"></section>
+  <section id="tab-pay" style="display:none"></section>
   <section id="tab-settings" style="display:none"></section>
 </main>
 <script>
@@ -153,8 +155,32 @@ const DEFAULTS={
   holidays:{ '2026':[10,11,10,8,12,9,9,11,10,11,9,9] },
   offs:{ '2026':[9,9,9,8,9,9,9,10,9,9,9,9] },
   roster:{},
+  payCfg:{nightH:4}, // 야간 1회당 가산 환산시간 (8시간×0.5배 기준)
   ui:{ym:'2026-07',unitId:'u1',calcYear:'2026'}
 };
+/* 대한민국 법정공휴일+대체공휴일 (근로자의날·제헌절 제외 — 기존 엑셀 집계 기준과 동일)
+   2028-04-12는 국회의원 선거일. 이후 선거일·임시공휴일이 생기면 표에서 직접 고치면 됩니다 */
+const KR_HOLIDAYS={
+  2026:['1-1','2-16','2-17','2-18','3-1','3-2','5-5','5-24','5-25','6-3','6-6','8-15','8-17','9-24','9-25','9-26','10-3','10-5','10-9','12-25'],
+  2027:['1-1','2-6','2-7','2-8','2-9','3-1','5-5','5-13','6-6','8-15','8-16','9-14','9-15','9-16','10-3','10-4','10-9','10-11','12-25','12-27'],
+  2028:['1-1','1-26','1-27','1-28','3-1','4-12','5-2','5-5','6-6','8-15','10-2','10-3','10-4','10-5','10-9','12-25'],
+  2029:['1-1','2-12','2-13','2-14','3-1','5-5','5-7','5-20','5-21','6-6','8-15','9-21','9-22','9-23','9-24','10-3','10-9','12-25'],
+  2030:['1-1','2-2','2-3','2-4','2-5','3-1','5-5','5-6','5-9','6-6','8-15','9-11','9-12','9-13','10-3','10-9','12-25']
+};
+function autoHolidayCounts(y){
+  const list=new Set(KR_HOLIDAYS[y]||[]);
+  const out=[];
+  for(let m=1;m<=12;m++){
+    let c=0;
+    const nd=new Date(y,m,0).getDate();
+    for(let d=1;d<=nd;d++){
+      const w=new Date(y,m-1,d).getDay();
+      if(w===0||w===6||list.has(m+'-'+d))c++;
+    }
+    out.push(c);
+  }
+  return out;
+}
 let S=load();
 function load(){
   try{
@@ -201,7 +227,7 @@ document.querySelectorAll('nav button').forEach(b=>{
   b.onclick=()=>{
     document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
     b.classList.add('on');
-    ['roster','calc','settings'].forEach(t=>{
+    ['roster','calc','pay','settings'].forEach(t=>{
       document.getElementById('tab-'+t).style.display=(t===b.dataset.tab)?'':'none';
     });
     render();
@@ -326,6 +352,7 @@ function renderRoster(){
     <div class="spacer"></div>
     <button class="btn primary" id="autoBtn">자동 편성</button>
     <button class="btn" id="copyPrev">전월 복사</button>
+    <button class="btn" id="xlsBtn">엑셀 내보내기</button>
     <button class="btn" id="printBtn">인쇄</button>
     <button class="btn danger" id="clearM">이달 지우기</button>
   </div>`;
@@ -496,6 +523,7 @@ function bindRosterTop(){
     render();
   };
   root.querySelector('#printBtn').onclick=()=>window.print();
+  root.querySelector('#xlsBtn').onclick=()=>exportXls();
   root.querySelector('#copyPrev').onclick=()=>{
     const prev=shiftYm(S.ui.ym,-1);
     const src=S.roster[prev];
@@ -525,6 +553,52 @@ function bindRosterTop(){
   });
 }
 
+/* ===== 엑셀 내보내기 (엑셀이 읽는 HTML .xls — 기존 엑셀 표와 같은 모양·색) ===== */
+function exportXls(){
+  const ym=S.ui.ym,[y,m]=ymParts(ym),nd=daysIn(y,m);
+  const unit=unitById(S.ui.unitId);
+  const people=unit?unitStaff(unit.id):[];
+  if(!people.length){alert('내보낼 직원이 없습니다.');return;}
+  const COLORS={D:'#d7e9ff',E:'#ffe9cc',S:'#e5dcff',N:'#d0d4de',OFF:'#dff3e3',V:'#ffdce3'};
+  const td=(v,style)=>`<td style="border:.5pt solid #999;text-align:center;${style||''}">${v}</td>`;
+  let h=`<meta charset="UTF-8"><table>`;
+  h+=`<tr><td></td><td></td><td colspan="${nd}" style="font-size:14pt;font-weight:bold;text-align:center">${y}년 ${m}월 근무표 (${esc(unit.name)})</td></tr>`;
+  h+=`<tr>${td('성명','background:#333;color:#fff;font-weight:bold')}${td('구분','background:#333;color:#fff;font-weight:bold')}`;
+  for(let d=1;d<=nd;d++){const w=new Date(y,m-1,d).getDay();h+=td(WD[w]+'<br>'+d,'background:#333;color:'+(w===0?'#ff8787':w===6?'#8fbaff':'#fff')+';font-weight:bold');}
+  h+=td('OFF계','background:#333;color:#fff;font-weight:bold')+td('연차계','background:#333;color:#fff;font-weight:bold')+td('근무계','background:#333;color:#fff;font-weight:bold')+'</tr>';
+  for(const p of people){
+    const c={D:0,E:0,S:0,N:0,OFF:0,V:0};
+    let row='';
+    for(let d=1;d<=nd;d++){
+      const v=getCell(ym,p.id,d);
+      if(v)c[v]++;
+      row+=td(v==='V'?'연차':(v||''),v?('background:'+COLORS[v]):'');
+    }
+    h+=`<tr>${td(esc(p.name),'font-weight:bold')}${td(p.fix?('고정('+p.fix+')'):'교대(D/E/S/N)')}${row}${td(c.OFF)}${td(c.V)}${td(c.D+c.E+c.S+c.N)}</tr>`;
+  }
+  h+=`<tr></tr>`;
+  for(const code of ['D','E','S','N','OFF','V']){
+    h+=`<tr>${td('')}${td((code==='V'?'연차':code)+' 합계','font-weight:bold')}`;
+    for(let d=1;d<=nd;d++){
+      let c=0;
+      for(const p of people)if(getCell(ym,p.id,d)===code)c++;
+      let bg='';
+      if(['D','E','S','N'].includes(code)){
+        const need=unit.need[code]||0;
+        if(c<need)bg='background:#ffb3b3';else if(c>need)bg='background:#ffe08a';
+      }
+      h+=td(c,bg);
+    }
+    h+=`<td></td><td></td><td></td></tr>`;
+  }
+  h+='</table>';
+  const blob=new Blob(['﻿'+h],{type:'application/vnd.ms-excel'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`근무표_${ym}_${unit.name}.xls`;
+  a.click();URL.revokeObjectURL(a.href);
+}
+
 /* ===== 휴일계산 탭 ===== */
 function renderCalc(){
   const root=document.getElementById('tab-calc');
@@ -540,6 +614,7 @@ function renderCalc(){
     <h2 style="margin:0">휴일수 계산</h2>
     <select id="calcYear">${Object.keys(S.holidays).sort().map(v=>`<option ${v===yr?'selected':''}>${v}</option>`).join('')}</select>
     <button class="btn" id="addYear">연도 추가</button>
+    <button class="btn" id="autoHoliday">휴일수 자동 계산</button>
     <div class="spacer"></div>
     <span class="hint">공휴일 수(주말+법정공휴일)와 그 달 오프수를 입력하면 휴일수당 일수가 자동 계산됩니다.</span>
   </div>
@@ -586,9 +661,73 @@ function renderCalc(){
     const v=prompt('추가할 연도 (예: 2027)');
     if(!v||!/^\d{4}$/.test(v.trim()))return;
     const y=v.trim();
-    if(!S.holidays[y]){S.holidays[y]=Array(12).fill(0);S.offs[y]=Array(12).fill(9);}
+    if(!S.holidays[y]){
+      S.holidays[y]=KR_HOLIDAYS[+y]?autoHolidayCounts(+y):Array(12).fill(0);
+      S.offs[y]=Array(12).fill(9);
+    }
     S.ui.calcYear=y;save();renderCalc();
   };
+  root.querySelector('#autoHoliday').onclick=()=>{
+    const y=+yr;
+    const auto=autoHolidayCounts(y);
+    const note=KR_HOLIDAYS[y]?'주말+법정공휴일(대체공휴일 포함) 기준으로 다시 계산합니다.':'이 연도는 공휴일 목록이 없어 주말만 계산됩니다. 공휴일은 표에서 직접 더해주세요.';
+    if(!confirm(note+'\n지금 입력된 값을 덮어씁니다. 계속할까요?'))return;
+    S.holidays[yr]=auto;save();renderCalc();
+  };
+}
+
+/* ===== 급여 탭 ===== */
+function renderPay(){
+  const root=document.getElementById('tab-pay');
+  const ym=S.ui.ym,[y,m]=ymParts(ym),nd=daysIn(y,m);
+  const won=v=>Math.round(v).toLocaleString('ko-KR');
+  /* 휴일가산: 엑셀 공식 그대로 — 연간 (공휴일−오프수) 합 × 8시간 × 1.5 ÷ 12개월 = 월 고정 가산시간 */
+  const H=S.holidays[String(y)]||[],O=S.offs[String(y)]||[];
+  const holiHours=H.reduce((a,b,i)=>a+Math.max(0,(+b||0)-(+O[i]||0)),0)*8*1.5/12;
+
+  let html=`<div class="card"><div class="row">
+    <div class="month-nav">
+      <button class="btn" id="payPrevM">&lt;</button>
+      <b>${y}년 ${m}월</b>
+      <button class="btn" id="payNextM">&gt;</button>
+    </div>
+    <div class="spacer"></div>
+    <label>야간 1회당 가산 환산시간 <input type="number" min="0" max="12" step="0.5" id="nightH" value="${S.payCfg.nightH}"></label>
+  </div>
+  <p class="hint" style="margin-top:8px">기본급 = 근무시간 × 시급. 야간가산 = 야간(N) 횟수 × 가산시간 × 시급 (기본 4시간 = 8시간의 0.5배). 휴일가산 = 월 ${holiHours.toFixed(1)}시간 × 시급 (휴일계산 탭의 연간 휴일수당 ÷ 12개월, 엑셀과 같은 공식). 참고용 계산이며 주휴수당·4대보험·세금은 반영하지 않습니다.</p></div>`;
+
+  let gTotal=0;
+  html+=`<div class="card"><div style="overflow:auto"><table class="calc"><tr><th>유닛</th><th>이름</th><th>D</th><th>E</th><th>S</th><th>N</th><th>근무시간</th><th>시급</th><th>기본급</th><th>야간가산</th><th>휴일가산</th><th>합계</th></tr>`;
+  for(const u of S.units){
+    for(const p of unitStaff(u.id)){
+      const c={D:0,E:0,S:0,N:0};
+      for(let d=1;d<=nd;d++){const v=getCell(ym,p.id,d);if(c[v]!==undefined)c[v]++;}
+      const hours=c.D*S.shifts.D.hours+c.E*S.shifts.E.hours+c.S*S.shifts.S.hours+c.N*S.shifts.N.hours;
+      const wage=+p.wage||0;
+      const base=hours*wage;
+      const night=c.N*(+S.payCfg.nightH||0)*wage;
+      const holi=holiHours*wage;
+      const total=base+night+holi;
+      gTotal+=total;
+      html+=`<tr><td>${esc(u.name)}</td><td class="lbl">${esc(p.name)}</td>
+        <td>${c.D}</td><td>${c.E}</td><td>${c.S}</td><td>${c.N}</td><td>${hours}</td>
+        <td><input type="number" min="0" step="10" value="${wage||''}" placeholder="시급" data-wage="${p.id}" style="width:80px"></td>
+        <td>${wage?won(base):'-'}</td><td>${wage?won(night):'-'}</td><td>${wage?won(holi):'-'}</td><td><b>${wage?won(total):'-'}</b></td></tr>`;
+    }
+  }
+  html+=`<tr class="total"><td colspan="11" style="text-align:right">전체 합계</td><td>${won(gTotal)}</td></tr>`;
+  html+=`</table></div></div>`;
+  root.innerHTML=html;
+
+  root.querySelector('#payPrevM').onclick=()=>{S.ui.ym=shiftYm(S.ui.ym,-1);save();renderPay();};
+  root.querySelector('#payNextM').onclick=()=>{S.ui.ym=shiftYm(S.ui.ym,1);save();renderPay();};
+  root.querySelector('#nightH').onchange=e=>{S.payCfg.nightH=+e.target.value||0;save();renderPay();};
+  root.querySelectorAll('input[data-wage]').forEach(inp=>{
+    inp.onchange=()=>{
+      const p=S.staff.find(x=>x.id===inp.dataset.wage);
+      if(p){p.wage=+inp.value||0;save();renderPay();}
+    };
+  });
 }
 
 /* ===== 설정 탭 ===== */
@@ -755,6 +894,7 @@ function render(){
   const t=activeTab();
   if(t==='roster')renderRoster();
   else if(t==='calc')renderCalc();
+  else if(t==='pay')renderPay();
   else renderSettings();
 }
 render();
