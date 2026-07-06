@@ -167,9 +167,15 @@ function load(){
 }
 let saveTimer=null;
 function save(){
-  localStorage.setItem(LS_KEY,JSON.stringify(S));
   const el=document.getElementById('saveState');
-  el.textContent='저장됨 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  try{
+    localStorage.setItem(LS_KEY,JSON.stringify(S));
+    el.textContent='저장됨 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }catch(e){
+    el.textContent='저장 안 됨 — 백업 파일로 보관하세요';
+    el.style.color='var(--warn)';
+    return;
+  }
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{el.textContent='자동저장';},2000);
 }
