@@ -591,7 +591,7 @@ function renderSettings(){
   for(const u of S.units){
     const ppl=unitStaff(u.id);
     html+=`<h3>${esc(u.name)} (${ppl.length}명)</h3><div class="stafflist">`;
-    html+=ppl.map(p=>`<span class="chip">${esc(p.name)}
+    html+=ppl.map(p=>`<span class="chip"><span data-rename="${p.id}" title="이름 바꾸기" style="cursor:pointer">${esc(p.name)}</span>
       <select data-fix="${p.id}" title="고정 근무" style="border:0;background:none;font-size:12px;color:var(--sub);padding:0">
         <option value="">교대</option>
         ${['D','E','S','N'].map(c=>`<option value="${c}" ${p.fix===c?'selected':''}>${c} 고정</option>`).join('')}
@@ -599,7 +599,11 @@ function renderSettings(){
       <button data-del-p="${p.id}" title="삭제">×</button></span>`).join('');
     html+=`</div><div class="row" style="margin-top:8px">
       <input type="text" placeholder="이름 (쉼표로 여러 명)" data-add-input="${u.id}" style="width:240px">
-      <button class="btn" data-add-p="${u.id}">추가</button></div>`;
+      <button class="btn" data-add-p="${u.id}">추가</button>
+      <span style="color:var(--line)">|</span>
+      <input type="number" min="1" max="99" placeholder="인원수" data-cnt-input="${u.id}">
+      <button class="btn" data-add-cnt="${u.id}">A, B, C 이름으로 추가</button>
+      <span class="hint">이름은 나중에 클릭해서 바꿀 수 있어요</span></div>`;
   }
   html+=`</div>`;
 
@@ -658,6 +662,30 @@ function renderSettings(){
   });
   root.querySelectorAll('input[data-add-input]').forEach(inp=>{
     inp.onkeydown=e=>{if(e.key==='Enter')root.querySelector(`[data-add-p="${inp.dataset.addInput}"]`).click();};
+  });
+  const abc=i=>{let s='';i++;while(i>0){i--;s=String.fromCharCode(65+i%26)+s;i=Math.floor(i/26);}return s;}; // 0→A … 25→Z, 26→AA
+  root.querySelectorAll('[data-add-cnt]').forEach(b=>{
+    b.onclick=()=>{
+      const inp=root.querySelector(`input[data-cnt-input="${b.dataset.addCnt}"]`);
+      const cnt=Math.min(99,+inp.value||0);
+      if(cnt<1)return;
+      const used=new Set(S.staff.filter(p=>p.unitId===b.dataset.addCnt).map(p=>p.name));
+      let i=0,made=0;
+      while(made<cnt){
+        const nm=abc(i++);
+        if(used.has(nm))continue;
+        S.staff.push({id:uid(),name:nm,unitId:b.dataset.addCnt,fix:''});
+        made++;
+      }
+      inp.value='';save();renderSettings();
+    };
+  });
+  root.querySelectorAll('[data-rename]').forEach(el=>{
+    el.onclick=()=>{
+      const p=S.staff.find(x=>x.id===el.dataset.rename);
+      const nm=prompt('새 이름',p.name);
+      if(nm&&nm.trim()){p.name=nm.trim();save();renderSettings();}
+    };
   });
   root.querySelectorAll('select[data-fix]').forEach(sel=>{
     sel.onchange=()=>{
