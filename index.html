@@ -342,7 +342,16 @@ function renderRoster(){
       <label><input type="checkbox" id="af-night" checked> 야간 다음날 주간 금지</label>
       <button class="btn primary" id="afRun">편성 실행</button>
     </div>
-    <p class="hint" style="margin-top:6px">연차 날짜를 정해두려면: 먼저 「연차」 브러시로 원하는 칸을 찍은 뒤 편성 실행 — 그 연차는 그대로 두고 나머지를 짭니다. 연차를 안 찍은 사람은 위의 연차 개수만큼 자동 배정(시기 분산). 남는 인력은 S 추가 배치. 고정 근무 직원(설정 탭에서 지정)은 그 근무만 맡습니다. 실행하면 이 유닛의 ${y}년 ${m}월(${nd0}일) 배정을 새로 만듭니다.</p>
+    <div style="margin-top:10px"><b style="font-size:13px">직원별 연차일</b> <span class="hint">쉼표로 여러 날 (예: 5, 12) — 적은 날은 연차로 고정되고 그날을 피해서 짭니다. 비워두면 위의 연차 개수만큼 자동 배정</span>
+      <div class="row" style="margin-top:6px;gap:8px">
+      ${(unit?unitStaff(unit.id):[]).map(p=>{
+        const cur=(S.roster[ym]&&S.roster[ym][p.id])||{};
+        const vdays=Object.keys(cur).filter(d=>cur[d]==='V').map(Number).sort((a,b)=>a-b).join(', ');
+        return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px">${esc(p.name)} <input type="text" data-vdays="${p.id}" value="${vdays}" placeholder="예: 5" style="width:70px;padding:4px 6px"></label>`;
+      }).join('')}
+      </div>
+    </div>
+    <p class="hint" style="margin-top:8px">남는 인력은 S 추가 배치. 고정 근무 직원(설정 탭에서 지정)은 그 근무만 맡습니다. 실행하면 이 유닛의 ${y}년 ${m}월(${nd0}일) 배정을 새로 만듭니다.</p>
     </div>`;
   }
 
@@ -463,7 +472,17 @@ function bindRosterTop(){
     const cur=S.roster[S.ui.ym];
     const people=unitStaff(S.ui.unitId);
     const hasData=cur&&people.some(p=>cur[p.id]&&Object.keys(cur[p.id]).length);
-    if(hasData&&!confirm('이 유닛의 이번 달 배정을 새로 편성합니다. 미리 찍어둔 연차는 그대로 유지됩니다. 계속할까요?'))return;
+    if(hasData&&!confirm('이 유닛의 이번 달 배정을 새로 편성합니다. 지정한 연차일은 그대로 유지됩니다. 계속할까요?'))return;
+    /* 입력칸의 연차일을 먼저 반영 (기존 연차 표시는 입력값으로 교체) */
+    const[gy,gm]=ymParts(S.ui.ym), gnd=daysIn(gy,gm);
+    for(const p of people){
+      const inp=root.querySelector(`input[data-vdays="${p.id}"]`);
+      if(!inp)continue;
+      const days=[...new Set(inp.value.split(/[,\s]+/).map(s=>parseInt(s,10)).filter(d=>d>=1&&d<=gnd))];
+      const curP=(S.roster[S.ui.ym]||{})[p.id]||{};
+      for(const d of Object.keys(curP))if(curP[d]==='V')setCell(S.ui.ym,p.id,+d,'');
+      for(const d of days)setCell(S.ui.ym,p.id,d,'V');
+    }
     const opts={
       ym:S.ui.ym, unitId:S.ui.unitId,
       need:{D:+root.querySelector('#af-D').value||0, E:+root.querySelector('#af-E').value||0,
