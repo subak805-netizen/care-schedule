@@ -156,6 +156,7 @@ const DEFAULTS={
   offs:{ '2026':[9,9,9,8,9,9,9,10,9,9,9,9] },
   roster:{},
   payCfg:{nightH:4}, // 야간 1회당 가산 환산시간 (8시간×0.5배 기준)
+  afCfg:{night:true,nightMax:2,noDAfterNightOff:true}, // 자동 편성 규칙 (저장됨)
   ui:{ym:'2026-07',unitId:'u1',calcYear:'2026'}
 };
 /* 대한민국 법정공휴일+대체공휴일 (근로자의날·제헌절 제외 — 기존 엑셀 집계 기준과 동일)
@@ -267,11 +268,12 @@ function autoFill(opts){
     const daysLeft=nd-d+1;
     /* 쉬는 사람 고르기: ①지정 연차 ②야간 연속 2일 강제휴식 ③남은 휴무를 남은 일수에 다 써야 하는 사람 ④휴무 비율 높은 순
        단, 앞으로 남은 지정 연차 몫(presetLeft)은 미리 아껴둔다 */
+    const nMax=opts.nightMax||2;
     const resters=new Set();
     for(const p of people){
       if(preset[p.id].has(d)){resters.add(p.id);continue;}
       if(restLeft[p.id]-presetLeft(p)<=0)continue;
-      if((opts.nightRule&&nStreak[p.id]>=2)||restLeft[p.id]>=daysLeft)resters.add(p.id);
+      if((opts.nightRule&&nStreak[p.id]>=nMax)||restLeft[p.id]>=daysLeft)resters.add(p.id);
     }
     let target=Math.round(restSlotsLeft/daysLeft);
     target=Math.max(target,resters.size);
@@ -290,11 +292,21 @@ function autoFill(opts){
     for(const p of workers){ // 고정 근무 직원
       if(!assigned[p.id]&&p.fix){assigned[p.id]=p.fix;slots[p.fix]--;}
     }
+    /* 야간 → OFF → 바로 D 금지: 어제 쉬었고 그제가 야간이던 사람은 오늘 D 불가 */
+    const noD=new Set();
+    if(opts.noDAfterNightOff&&d>=3)for(const p of workers){
+      const g=grid[p.id];
+      if((g[d-1]==='OFF'||g[d-1]==='V')&&g[d-2]==='N')noD.add(p.id);
+    }
     for(const code of ['N','S','E','D']){ // 같은 근무 횟수가 적은 사람부터
       while(slots[code]>0){
-        const pool=workers.filter(p=>!assigned[p.id]);
+        const pool=workers.filter(p=>!assigned[p.id]&&!(code==='D'&&noD.has(p.id)));
         if(!pool.length){shortage[d]=(shortage[d]||[]);shortage[d].push(code+' '+slots[code]+'명');break;}
-        pool.sort((a,b)=>counts[a.id][code]-counts[b.id][code]
+        const spare=p=>restLeft[p.id]-presetLeft(p)>0?0:1; // 야간 뒤에 쉴 여유가 있는가
+        pool.sort((a,b)=>
+          (code==='N'?spare(a)-spare(b):0) // 야간은 나중에 쉴 수 있는 사람부터 (연속 초과 방지)
+          ||(code!=='D'?(noD.has(b.id)?1:0)-(noD.has(a.id)?1:0):0) // D 못 서는 사람을 다른 근무에 먼저 배치해 D 자리 확보
+          ||counts[a.id][code]-counts[b.id][code]
           ||(counts[a.id].D+counts[a.id].E+counts[a.id].S+counts[a.id].N)-(counts[b.id].D+counts[b.id].E+counts[b.id].S+counts[b.id].N));
         assigned[pool[0].id]=code;slots[code]--;
       }
@@ -366,8 +378,13 @@ function renderRoster(){
       ${['D','E','S','N'].map(c=>`<label>${c} <input type="number" min="0" max="20" id="af-${c}" value="${unit?unit.need[c]||0:0}"></label>`).join('')}
       <label>OFF <input type="number" min="0" max="20" id="af-off" value="${offDefault}"></label>
       <label>연차 <input type="number" min="0" max="10" id="af-vac" value="1"></label>
-      <label><input type="checkbox" id="af-night" checked> 야간 다음날 주간 금지</label>
       <button class="btn primary" id="afRun">편성 실행</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <b style="font-size:13px">편성 규칙</b>
+      <label><input type="checkbox" id="af-night" ${S.afCfg.night?'checked':''}> 야간(N) 다음날 주간 금지</label>
+      <label>야간 연속 최대 <input type="number" id="af-nmax" min="1" max="6" value="${S.afCfg.nightMax}" style="width:52px">일 (넘으면 자동 휴무)</label>
+      <label><input type="checkbox" id="af-nod" ${S.afCfg.noDAfterNightOff?'checked':''}> 야간 → OFF 다음날 D 금지</label>
     </div>
     <div style="margin-top:10px"><b style="font-size:13px">직원별 연차일</b> <span class="hint">여러 날은 쉼표(5, 12), 연속은 붙임표(12-14 = 12·13·14일) — 적은 날은 연차로 고정되고 그날을 피해서 짭니다. 비워두면 위의 연차 개수만큼 자동 배정</span>
       <div class="row" style="margin-top:6px;gap:8px">
@@ -419,6 +436,10 @@ function renderRoster(){
         if(prev==='N'&&(v==='D'||v==='E'||v==='S')){
           nw='nwarn';
           warns.push(`${p.name}: ${d-1}일 야간(N) 다음날 ${d}일 ${v} 배정`);
+        }
+        if(d>2&&v==='D'&&(prev==='OFF'||prev==='V')&&getCell(ym,p.id,d-2)==='N'){
+          nw='nwarn';
+          warns.push(`${p.name}: ${d-2}일 야간(N) → 휴무 → ${d}일 바로 D 배정`);
         }
       }
       html+=`<td class="cell ${v?'v-'+v:''} ${nw}" data-p="${p.id}" data-d="${d}">${v==='V'?'연':v}</td>`;
@@ -525,8 +546,11 @@ function bindRosterTop(){
             S:+root.querySelector('#af-S').value||0, N:+root.querySelector('#af-N').value||0},
       off:+root.querySelector('#af-off').value||0,
       vac:+root.querySelector('#af-vac').value||0,
-      nightRule:root.querySelector('#af-night').checked
+      nightRule:root.querySelector('#af-night').checked,
+      nightMax:Math.max(1,+root.querySelector('#af-nmax').value||2),
+      noDAfterNightOff:root.querySelector('#af-nod').checked
     };
+    S.afCfg={night:opts.nightRule,nightMax:opts.nightMax,noDAfterNightOff:opts.noDAfterNightOff};
     genResult=autoFill(opts);
     if(!genResult.error)save();
     render();
