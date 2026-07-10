@@ -156,7 +156,7 @@ const DEFAULTS={
   offs:{ '2026':[9,9,9,8,9,9,9,10,9,9,9,9] },
   roster:{},
   payCfg:{nightH:4}, // 야간 1회당 가산 환산시간 (8시간×0.5배 기준)
-  afCfg:{night:true,nightMax:2,noDAfterNightOff:true}, // 자동 편성 규칙 (저장됨)
+  afCfg:{night:true,nightMax:1,noDAfterNightOff:true,pattern:'ESDNF',v2:true}, // 자동 편성 규칙 (저장됨)
   ui:{ym:'2026-07',unitId:'u1',calcYear:'2026'}
 };
 /* 대한민국 법정공휴일+대체공휴일 (근로자의날·제헌절 제외 — 기존 엑셀 집계 기준과 동일)
@@ -189,6 +189,7 @@ function load(){
     if(!raw) return structuredClone(DEFAULTS);
     const d=JSON.parse(raw);
     for(const k of Object.keys(DEFAULTS)) if(d[k]===undefined) d[k]=structuredClone(DEFAULTS[k]);
+    if(!d.afCfg.v2){d.afCfg.nightMax=1;d.afCfg.pattern='ESDNF';d.afCfg.v2=true;} // 야간 연속 금지 + 기본 패턴 (2026-07 요청)
     return d;
   }catch(e){ return structuredClone(DEFAULTS); }
 }
@@ -262,6 +263,16 @@ function autoFill(opts){
   const shortage={}; let extraS=0;
   const presetLeft=p=>[...preset[p.id]].filter(x=>x>curDay).length; // 오늘 이후 남은 지정연차
   let curDay=0;
+  /* 선호 패턴 (예: ESDNF = E→S→D→N→휴무 순환): 오늘 근무의 "패턴상 전날 근무"가 어제와 일치하는 사람 우선 */
+  const predOf={};
+  const pat=(opts.pattern||'');
+  if(pat.length>=2)for(let i=0;i<pat.length;i++)predOf[pat[i]]=pat[(i-1+pat.length)%pat.length];
+  const isRest=v=>v==='OFF'||v==='V';
+  const patScore=(p,code,d)=>{ // 0=패턴 일치, 1=불일치/판단불가
+    const pr=predOf[code];if(!pr||d<2)return 1;
+    const g=grid[p.id][d-1];
+    return (pr==='F'?isRest(g):g===pr)?0:1;
+  };
 
   for(let d=1;d<=nd;d++){
     curDay=d;
@@ -278,7 +289,8 @@ function autoFill(opts){
     let target=Math.round(restSlotsLeft/daysLeft);
     target=Math.max(target,resters.size);
     const cands=people.filter(p=>!resters.has(p.id)&&restLeft[p.id]-presetLeft(p)>0)
-      .sort((a,b)=>restLeft[b.id]/daysLeft-restLeft[a.id]/daysLeft
+      .sort((a,b)=>patScore(a,'F',d)-patScore(b,'F',d) // 패턴상 오늘 쉴 차례인 사람 우선 (예: 어제 N)
+        ||restLeft[b.id]/daysLeft-restLeft[a.id]/daysLeft
         ||((people.indexOf(a)+d)%n)-((people.indexOf(b)+d)%n));
     for(const p of cands){if(resters.size>=target)break;resters.add(p.id);}
 
@@ -306,6 +318,7 @@ function autoFill(opts){
         pool.sort((a,b)=>
           (code==='N'?spare(a)-spare(b):0) // 야간은 나중에 쉴 수 있는 사람부터 (연속 초과 방지)
           ||(code!=='D'?(noD.has(b.id)?1:0)-(noD.has(a.id)?1:0):0) // D 못 서는 사람을 다른 근무에 먼저 배치해 D 자리 확보
+          ||patScore(a,code,d)-patScore(b,code,d) // 선호 패턴 순서에 맞는 사람 우선
           ||counts[a.id][code]-counts[b.id][code]
           ||(counts[a.id].D+counts[a.id].E+counts[a.id].S+counts[a.id].N)-(counts[b.id].D+counts[b.id].E+counts[b.id].S+counts[b.id].N));
         assigned[pool[0].id]=code;slots[code]--;
@@ -385,6 +398,7 @@ function renderRoster(){
       <label><input type="checkbox" id="af-night" ${S.afCfg.night?'checked':''}> 야간(N) 다음날 주간 금지</label>
       <label>야간 연속 최대 <input type="number" id="af-nmax" min="1" max="6" value="${S.afCfg.nightMax}" style="width:52px">일 (넘으면 자동 휴무)</label>
       <label><input type="checkbox" id="af-nod" ${S.afCfg.noDAfterNightOff?'checked':''}> 야간 → OFF 다음날 D 금지</label>
+      <label>선호 패턴 <input type="text" id="af-pat" value="${esc(S.afCfg.pattern||'')}" placeholder="예: ESDNF" style="width:80px"> <span class="hint">되도록 이 순서로 (F=휴무, 비우면 사용 안 함)</span></label>
     </div>
     <div style="margin-top:10px"><b style="font-size:13px">직원별 연차일</b> <span class="hint">여러 날은 쉼표(5, 12), 연속은 붙임표(12-14 = 12·13·14일) — 적은 날은 연차로 고정되고 그날을 피해서 짭니다. 비워두면 위의 연차 개수만큼 자동 배정</span>
       <div class="row" style="margin-top:6px;gap:8px">
@@ -547,10 +561,11 @@ function bindRosterTop(){
       off:+root.querySelector('#af-off').value||0,
       vac:+root.querySelector('#af-vac').value||0,
       nightRule:root.querySelector('#af-night').checked,
-      nightMax:Math.max(1,+root.querySelector('#af-nmax').value||2),
-      noDAfterNightOff:root.querySelector('#af-nod').checked
+      nightMax:Math.max(1,+root.querySelector('#af-nmax').value||1),
+      noDAfterNightOff:root.querySelector('#af-nod').checked,
+      pattern:root.querySelector('#af-pat').value.toUpperCase().replace(/[^DESNF]/g,'')
     };
-    S.afCfg={night:opts.nightRule,nightMax:opts.nightMax,noDAfterNightOff:opts.noDAfterNightOff};
+    S.afCfg={night:opts.nightRule,nightMax:opts.nightMax,noDAfterNightOff:opts.noDAfterNightOff,pattern:opts.pattern,v2:true};
     genResult=autoFill(opts);
     if(!genResult.error)save();
     render();
