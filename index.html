@@ -332,12 +332,21 @@ function autoFill(opts){
         const pool=workers.filter(p=>!assigned[p.id]&&!(code==='D'&&noD.has(p.id)));
         if(!pool.length){shortage[d]=(shortage[d]||[]);shortage[d].push(code+' '+slots[code]+'명');break;}
         const spare=p=>restLeft[p.id]-presetLeft(p)>0?0:1; // 야간 뒤에 쉴 여유가 있는가
-        pool.sort((a,b)=>
-          (code==='N'?spare(a)-spare(b):0) // 야간은 다음날 쉴 수 있는 사람부터 (강제 OFF 여력 확보)
-          ||(code!=='D'?(noD.has(b.id)?1:0)-(noD.has(a.id)?1:0):0) // D 못 서는 사람을 다른 근무에 먼저 배치해 D 자리 확보
-          ||patScore(a,code,d)-patScore(b,code,d) // 선호 패턴 순서에 맞는 사람 우선
-          ||counts[a.id][code]-counts[b.id][code]
-          ||(counts[a.id].D+counts[a.id].E+counts[a.id].S+counts[a.id].N)-(counts[b.id].D+counts[b.id].E+counts[b.id].S+counts[b.id].N));
+        const totalW=p=>counts[p.id].D+counts[p.id].E+counts[p.id].S+counts[p.id].N;
+        if(code==='N'){
+          /* N은 골고루: 그제도 N이던 사람(N OFF N 반복)은 후순위, N 횟수 적은 사람 우선 */
+          pool.sort((a,b)=>spare(a)-spare(b)
+            ||(grid[a.id][d-2]==='N'?1:0)-(grid[b.id][d-2]==='N'?1:0)
+            ||counts[a.id].N-counts[b.id].N
+            ||patScore(a,code,d)-patScore(b,code,d)
+            ||totalW(a)-totalW(b));
+        }else{
+          pool.sort((a,b)=>
+            (code!=='D'?(noD.has(b.id)?1:0)-(noD.has(a.id)?1:0):0) // D 못 서는 사람을 E/S에 먼저 배치해 D 자리 확보
+            ||patScore(a,code,d)-patScore(b,code,d) // 선호 패턴 순서에 맞는 사람 우선
+            ||counts[a.id][code]-counts[b.id][code]
+            ||totalW(a)-totalW(b));
+        }
         assigned[pool[0].id]=code;slots[code]--;
       }
     }
@@ -400,11 +409,11 @@ function renderRoster(){
       <button class="btn primary" id="afRun">편성 실행</button>
     </div>
     <div class="row" style="margin-top:8px">
-      <b style="font-size:13px">Rules</b>
+      <b style="font-size:13px">편성 규칙</b>
       <label><input type="checkbox" id="af-nafteroff" ${S.afCfg.nAfterOff?'checked':''}> N &rarr; OFF</label>
-      <label><input type="checkbox" id="af-nod" ${S.afCfg.noDafterNOFF?'checked':''}> No D after N, OFF</label>
-      <label>Pattern <input type="text" id="af-pat" value="${esc((S.afCfg.pattern||'').split('').join(' '))}" placeholder="E S D N F" style="width:104px"></label>
-      <span class="hint">F = day off. Prev month's last day carries over (N &rarr; OFF).</span>
+      <label><input type="checkbox" id="af-nod" ${S.afCfg.noDafterNOFF?'checked':''}> N &rarr; OFF &rarr; D 금지</label>
+      <label>패턴 <input type="text" id="af-pat" value="${esc((S.afCfg.pattern||'').split('').join(' '))}" placeholder="E S D N F" style="width:104px"></label>
+      <span class="hint">F = 휴무. 전월 마지막 날도 이어서 봅니다 (전월 말일이 N이면 1일은 OFF).</span>
     </div>
     <div style="margin-top:10px"><b style="font-size:13px">직원별 연차일</b>
       <button class="btn" id="afClearV" style="padding:3px 10px;font-size:12px;margin-left:6px">연차 전부 지우기</button>
@@ -486,10 +495,10 @@ function renderRoster(){
   }
   html+=`</tfoot></table></div>`;
   html+=`<div class="legend">
-    <span><i style="background:var(--c-D)"></i>D ${esc(S.shifts.D.label)}</span>
-    <span><i style="background:var(--c-E)"></i>E ${esc(S.shifts.E.label)}</span>
-    <span><i style="background:var(--c-S)"></i>S ${esc(S.shifts.S.label)}</span>
-    <span><i style="background:var(--c-N)"></i>N ${esc(S.shifts.N.label)}</span>
+    <span><i style="background:var(--c-D)"></i>D</span>
+    <span><i style="background:var(--c-E)"></i>E</span>
+    <span><i style="background:var(--c-S)"></i>S</span>
+    <span><i style="background:var(--c-N)"></i>N</span>
     <span><i style="background:var(--c-OFF)"></i>OFF</span>
     <span><i style="background:var(--c-V)"></i>연차</span>
     <span>아래 합계: 빨강=필요인원 미달, 주황=초과</span>
