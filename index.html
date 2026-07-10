@@ -406,7 +406,9 @@ function renderRoster(){
       <label>Pattern <input type="text" id="af-pat" value="${esc((S.afCfg.pattern||'').split('').join(' '))}" placeholder="E S D N F" style="width:104px"></label>
       <span class="hint">F = day off. Prev month's last day carries over (N &rarr; OFF).</span>
     </div>
-    <div style="margin-top:10px"><b style="font-size:13px">직원별 연차일</b> <span class="hint">여러 날은 쉼표(5, 12), 연속은 붙임표(12-14 = 12·13·14일). 적은 날짜에만 연차가 들어가고 그날을 피해서 짭니다. 비워두면 그 사람은 연차 없이 편성됩니다.</span>
+    <div style="margin-top:10px"><b style="font-size:13px">직원별 연차일</b>
+      <button class="btn" id="afClearV" style="padding:3px 10px;font-size:12px;margin-left:6px">연차 전부 지우기</button>
+      <span class="hint">여러 날은 쉼표(5, 12), 연속은 붙임표(12-14 = 12·13·14일). 적은 날짜에만 연차가 들어가고 그날을 피해서 짭니다. 비워두면 그 사람은 연차 없이 편성됩니다.</span>
       <div class="row" style="margin-top:6px;gap:8px">
       ${(unit?unitStaff(unit.id):[]).map(p=>{
         const cur=(S.roster[ym]&&S.roster[ym][p.id])||{};
@@ -536,6 +538,16 @@ function bindRosterTop(){
   root.querySelector('#nextM').onclick=()=>{S.ui.ym=shiftYm(S.ui.ym,1);genResult=null;save();render();};
   root.querySelector('#unitSel').onchange=e=>{S.ui.unitId=e.target.value;genResult=null;save();render();};
   root.querySelector('#autoBtn').onclick=()=>{autoOpen=!autoOpen;render();};
+  const afClearV=root.querySelector('#afClearV');
+  if(afClearV)afClearV.onclick=()=>{
+    if(!confirm('이 유닛의 이번 달 연차 표시를 전부 지웁니다. (근무 배정은 그대로) 계속할까요?'))return;
+    const cur=S.roster[S.ui.ym]||{};
+    for(const p of unitStaff(S.ui.unitId)){
+      const g=cur[p.id];if(!g)continue;
+      for(const d of Object.keys(g))if(g[d]==='V')delete g[d];
+    }
+    save();render();
+  };
   const afRun=root.querySelector('#afRun');
   if(afRun)afRun.onclick=()=>{
     const cur=S.roster[S.ui.ym];
