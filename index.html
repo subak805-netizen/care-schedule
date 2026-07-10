@@ -167,7 +167,7 @@ const DEFAULTS={
   offs:{ '2026':[9,9,9,8,9,9,9,10,9,9,9,9] },
   roster:{},
   payCfg:{nightH:4}, // 야간 1회당 가산 환산시간 (8시간×0.5배 기준)
-  afCfg:{nAfterOff:true,noDafterNOFF:true,pattern:'ESDNF',v3:true}, // 자동 편성 규칙 (저장됨)
+  afCfg:{nAfterOff:true,noDafterNOFF:true,maxRun:4,pattern:'ESDNF',v3:true}, // 자동 편성 규칙 (저장됨)
   ui:{ym:'2026-07',unitId:'u1',calcYear:'2026'}
 };
 /* 대한민국 법정공휴일+대체공휴일 (근로자의날·제헌절 제외 — 기존 엑셀 집계 기준과 동일)
@@ -201,6 +201,7 @@ function load(){
     const d=JSON.parse(raw);
     for(const k of Object.keys(DEFAULTS)) if(d[k]===undefined) d[k]=structuredClone(DEFAULTS[k]);
     if(!d.afCfg.v3){d.afCfg={nAfterOff:true,noDafterNOFF:true,pattern:d.afCfg.pattern||'ESDNF',v3:true};} // 규칙 재정의 (2026-07 요청: N→OFF 무조건, N,OFF 뒤 D금지)
+    if(d.afCfg.maxRun===undefined)d.afCfg.maxRun=4; // 5일 연속 근무 금지 (2026-07 요청)
     return d;
   }catch(e){ return structuredClone(DEFAULTS); }
 }
@@ -273,12 +274,17 @@ function autoFill(opts){
   const prevRoster=S.roster[prevYm]||{};
   const [py,pm]=ymParts(prevYm), ndPrev=daysIn(py,pm);
 
-  const grid={}, restLeft={}, nStreak={}, counts={};
+  const isWorkCode=v=>v==='D'||v==='E'||v==='S'||v==='N';
+  const grid={}, restLeft={}, nStreak={}, wStreak={}, counts={};
   for(const p of people){
     grid[p.id]={};restLeft[p.id]=restOf(p);counts[p.id]={D:0,E:0,S:0,N:0};
     const pr=prevRoster[p.id]||{};
     grid[p.id][0]=pr[ndPrev]||''; grid[p.id][-1]=pr[ndPrev-1]||'';
     nStreak[p.id]=(grid[p.id][0]==='N')?1:0;
+    // 전월 말 연속 근무일수 이월 (최대 10일까지 역추적)
+    let ws=0;
+    for(let k=0;k<10;k++){const v=pr[ndPrev-k];if(isWorkCode(v))ws++;else break;}
+    wStreak[p.id]=ws;
   }
   let restSlotsLeft=people.reduce((a,p)=>a+restOf(p),0);
   const shortage={}; let extraS=0;
@@ -304,12 +310,14 @@ function autoFill(opts){
       if(preset[p.id].has(d)){resters.add(p.id);continue;}
       if(opts.nAfterOff&&nStreak[p.id]>=1){resters.add(p.id);continue;} // N 다음날 무조건 OFF
       if(restLeft[p.id]-presetLeft(p)<=0)continue;
+      if(opts.maxRun&&wStreak[p.id]>=opts.maxRun){resters.add(p.id);continue;} // 연속 근무 한도 도달 → 강제 휴무
       if(restLeft[p.id]>=daysLeft)resters.add(p.id);
     }
     let target=Math.round(restSlotsLeft/daysLeft);
     target=Math.max(target,resters.size);
     const cands=people.filter(p=>!resters.has(p.id)&&restLeft[p.id]-presetLeft(p)>0)
       .sort((a,b)=>patScore(a,'F',d)-patScore(b,'F',d) // 패턴상 오늘 쉴 차례인 사람 우선
+        ||wStreak[b.id]-wStreak[a.id] // 연속 근무가 긴 사람 먼저 쉬게
         ||restLeft[b.id]/daysLeft-restLeft[a.id]/daysLeft
         ||((people.indexOf(a)+d)%n)-((people.indexOf(b)+d)%n));
     for(const p of cands){if(resters.size>=target)break;resters.add(p.id);}
@@ -353,8 +361,8 @@ function autoFill(opts){
     for(const p of workers)if(!assigned[p.id]){assigned[p.id]='S';extraS++;} // 여유 인력은 S 추가(깍두기)
 
     for(const p of people){
-      if(resters.has(p.id)){restLeft[p.id]--;restSlotsLeft--;nStreak[p.id]=0;grid[p.id][d]=preset[p.id].has(d)?'V':'OFF';}
-      else{const c=assigned[p.id];grid[p.id][d]=c;counts[p.id][c]++;nStreak[p.id]=c==='N'?nStreak[p.id]+1:0;}
+      if(resters.has(p.id)){restLeft[p.id]--;restSlotsLeft--;nStreak[p.id]=0;wStreak[p.id]=0;grid[p.id][d]=preset[p.id].has(d)?'V':'OFF';}
+      else{const c=assigned[p.id];grid[p.id][d]=c;counts[p.id][c]++;nStreak[p.id]=c==='N'?nStreak[p.id]+1:0;wStreak[p.id]++;}
     }
   }
   /* 결과 반영 (경계용 0·-1일 제외, 1~말일만 저장) */
@@ -412,6 +420,7 @@ function renderRoster(){
       <b style="font-size:13px">편성 규칙</b>
       <label><input type="checkbox" id="af-nafteroff" ${S.afCfg.nAfterOff?'checked':''}> N &rarr; OFF</label>
       <label><input type="checkbox" id="af-nod" ${S.afCfg.noDafterNOFF?'checked':''}> N &rarr; OFF &rarr; D 금지</label>
+      <label>연속 근무 최대 <input type="number" id="af-maxrun" min="0" max="10" value="${S.afCfg.maxRun??4}" style="width:52px">일 <span class="hint">(0 = 제한 없음)</span></label>
       <label>패턴 <input type="text" id="af-pat" value="${esc((S.afCfg.pattern||'').split('').join(' '))}" placeholder="E S D N F" style="width:104px"></label>
       <span class="hint">F = 휴무. 전월 마지막 날도 이어서 봅니다 (전월 말일이 N이면 1일은 OFF).</span>
     </div>
@@ -457,9 +466,13 @@ function renderRoster(){
   // 전월 말일 이월용: day<=0이면 전월의 (말일+day)로 조회
   const prevYm=shiftYm(ym,-1),[ppy,ppm]=ymParts(prevYm),ndPrev=daysIn(ppy,ppm);
   const cellRel=(pid,day)=> day>=1 ? getCell(ym,pid,day) : getCell(prevYm,pid,ndPrev+day);
+  const maxRun=S.afCfg.maxRun??0;
   for(const p of people){
     html+=`<tr><td class="namecol">${esc(p.name)}${p.fix?` <span style="color:var(--sub);font-weight:400;font-size:11px">${p.fix}고정</span>`:''}</td>`;
     const cnt={D:0,E:0,S:0,N:0,OFF:0,V:0};
+    // 전월 말 연속 근무 이월
+    let run=0;
+    for(let k=0;k<10;k++){const pv=cellRel(p.id,-k);if(pv==='D'||pv==='E'||pv==='S'||pv==='N')run++;else break;}
     for(let d=1;d<=nd;d++){
       const v=getCell(ym,p.id,d);
       if(v)cnt[v]++;
@@ -469,10 +482,15 @@ function renderRoster(){
       const isWork=x=>x==='D'||x==='E'||x==='S'||x==='N';
       if(prev==='N'&&isWork(v)){
         nw='nwarn';
-        warns.push(`${p.name}: ${d}일 — 야간(N) 다음날은 OFF여야 하는데 ${v} 배정`);
+        warns.push(`${p.name}: ${d}일 — N 다음날은 OFF여야 하는데 ${v} 배정`);
       }else if(v==='D'&&(prev==='OFF'||prev==='V')&&prev2==='N'){
         nw='nwarn';
-        warns.push(`${p.name}: ${d}일 — 야간(N) → OFF 다음날 D 금지`);
+        warns.push(`${p.name}: ${d}일 — N → OFF 다음날 D 금지`);
+      }
+      run=isWork(v)?run+1:0;
+      if(maxRun>0&&run>maxRun){
+        nw='nwarn';
+        if(run===maxRun+1)warns.push(`${p.name}: ${d}일 — ${maxRun+1}일 연속 근무 (최대 ${maxRun}일)`);
       }
       html+=`<td class="cell ${v?'v-'+v:''} ${nw}" data-p="${p.id}" data-d="${d}">${v==='V'?'연':v}</td>`;
     }
@@ -589,9 +607,10 @@ function bindRosterTop(){
       off:+root.querySelector('#af-off').value||0,
       nAfterOff:root.querySelector('#af-nafteroff').checked,
       noDafterNOFF:root.querySelector('#af-nod').checked,
+      maxRun:Math.max(0,+root.querySelector('#af-maxrun').value||0),
       pattern:root.querySelector('#af-pat').value.toUpperCase().replace(/[^DESNF]/g,'')
     };
-    S.afCfg={nAfterOff:opts.nAfterOff,noDafterNOFF:opts.noDafterNOFF,pattern:opts.pattern,v3:true};
+    S.afCfg={nAfterOff:opts.nAfterOff,noDafterNOFF:opts.noDafterNOFF,maxRun:opts.maxRun,pattern:opts.pattern,v3:true};
     genResult=autoFill(opts);
     if(!genResult.error)save();
     render();
