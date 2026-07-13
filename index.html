@@ -763,7 +763,8 @@ function bindRosterTop(){
     if(hasData&&!confirm('이번 달에 이미 배정이 있습니다. 이 유닛만 전월 내용으로 덮어쓸까요?'))return;
     for(const p of people){
       if(!src[p.id])continue;
-      for(let d=1;d<=nd;d++) setCell(S.ui.ym,p.id,d,src[p.id][d]||'');
+      // 연차는 그 달에만 유효 — 복사하지 않음 (복사하면 다음 달에 연차가 저절로 생김)
+      for(let d=1;d<=nd;d++){const v=src[p.id][d]||'';setCell(S.ui.ym,p.id,d,v==='V'?'':v);}
     }
     save();render();
   };
