@@ -167,7 +167,7 @@ const DEFAULTS={
   offs:{ '2026':[9,9,9,8,9,9,9,10,9,9,9,9] },
   roster:{},
   payCfg:{nightH:4}, // 야간 1회당 가산 환산시간 (8시간×0.5배 기준)
-  afCfg:{mode:'cycle',nAfterOff:true,noDafterNOFF:true,maxRun:4,pattern:'ESDNFF',v3:true}, // 편성 방식·규칙 (저장됨)
+  afCfg:{mode:'cycle',nAfterOff:true,noDafterNOFF:false,maxRun:4,pattern:'ESDNFF',v3:true,v5:true}, // 편성 방식·규칙 (저장됨)
   ui:{ym:'2026-07',unitId:'u1',calcYear:'2026'}
 };
 /* 대한민국 법정공휴일+대체공휴일 (근로자의날·제헌절 제외 — 기존 엑셀 집계 기준과 동일)
@@ -203,6 +203,7 @@ function load(){
     if(!d.afCfg.v3){d.afCfg={nAfterOff:true,noDafterNOFF:true,pattern:d.afCfg.pattern||'ESDNF',v3:true};} // 규칙 재정의 (2026-07 요청: N→OFF 무조건, N,OFF 뒤 D금지)
     if(d.afCfg.maxRun===undefined)d.afCfg.maxRun=4; // 5일 연속 근무 금지 (2026-07 요청)
     if(!d.afCfg.mode){d.afCfg.mode='cycle';if(d.afCfg.pattern==='ESDNF')d.afCfg.pattern='ESDNFF';} // 순환 편성 기본 (2026-07 기준표 요청)
+    if(!d.afCfg.v5){d.afCfg.noDafterNOFF=false;d.afCfg.v5=true;} // N→OFF→D 금지 규칙 삭제 (2026-07 사용자 요청)
     return d;
   }catch(e){ return structuredClone(DEFAULTS); }
 }
@@ -525,6 +526,7 @@ function renderRoster(){
       <b>하루 필요인원</b>
       ${['D','E','S','N'].map(c=>`<label>${c} <input type="number" min="0" max="20" id="af-${c}" value="${unit?unit.need[c]||0:0}"></label>`).join('')}
       <label>OFF <input type="number" min="0" max="20" id="af-off" value="${offDefault}"></label>
+      <span class="hint">D·E·N·OFF는 고정 기준, 남는 인력은 전부 S로 들어갑니다</span>
       <button class="btn primary" id="afRun">편성 실행</button>
     </div>
     <div class="row" style="margin-top:8px">
@@ -535,8 +537,7 @@ function renderRoster(){
     <div class="row" style="margin-top:8px">
       <b style="font-size:13px">편성 규칙</b>
       <label><input type="checkbox" id="af-nafteroff" ${S.afCfg.nAfterOff?'checked':''}> N &rarr; OFF</label>
-      <label><input type="checkbox" id="af-nod" ${S.afCfg.noDafterNOFF?'checked':''}> N &rarr; OFF &rarr; D 금지</label>
-      <label>연속 근무 최대 <input type="number" id="af-maxrun" min="0" max="10" value="${S.afCfg.maxRun??4}" style="width:52px">일 <span class="hint">(0 = 제한 없음)</span></label>
+      <label>연속 근무 최대 <input type="number" id="af-maxrun" min="0" max="10" value="${S.afCfg.maxRun??4}" style="width:52px">일 <span class="hint">(4 또는 5 권장, 0 = 제한 없음)</span></label>
       <label>패턴 <input type="text" id="af-pat" value="${esc((S.afCfg.pattern||'').split('').join(' '))}" placeholder="E S D N F" style="width:104px"></label>
       <span class="hint">F = 휴무. 전월 마지막 날도 이어서 봅니다 (전월 말일이 N이면 1일은 OFF).</span>
     </div>
@@ -575,7 +576,7 @@ function renderRoster(){
     const w=new Date(y,m-1,d).getDay();
     html+=`<th class="${w===0?'sun':w===6?'sat':''}">${d}<br><span style="font-weight:400">${WD[w]}</span></th>`;
   }
-  html+=`<th>근무</th><th>시간</th><th>OFF</th><th>연차</th>`;
+  html+=`<th>D</th><th>E</th><th>S</th><th>N</th><th>OFF</th><th>연차</th><th>근무</th>`;
   html+=`</tr></thead><tbody>`;
 
   const warns=[];
@@ -599,9 +600,6 @@ function renderRoster(){
       if(prev==='N'&&isWork(v)){
         nw='nwarn';
         warns.push(`${p.name}: ${d}일 — N 다음날은 OFF여야 하는데 ${v} 배정`);
-      }else if(v==='D'&&(prev==='OFF'||prev==='V')&&prev2==='N'){
-        nw='nwarn';
-        warns.push(`${p.name}: ${d}일 — N → OFF 다음날 D 금지`);
       }
       run=isWork(v)?run+1:0;
       if(maxRun>0&&run>maxRun){
@@ -611,21 +609,32 @@ function renderRoster(){
       html+=`<td class="cell ${v?'v-'+v:''} ${nw}" data-p="${p.id}" data-d="${d}">${v==='V'?'연':v}</td>`;
     }
     const workDays=cnt.D+cnt.E+cnt.S+cnt.N;
-    const hours=cnt.D*S.shifts.D.hours+cnt.E*S.shifts.E.hours+cnt.S*S.shifts.S.hours+cnt.N*S.shifts.N.hours;
     const offCls=offTarget===undefined?'':(cnt.OFF===offTarget?'good':'bad');
-    html+=`<td class="sum">${workDays}</td><td class="sum">${hours}</td><td class="sum ${offCls}" title="목표 오프수 ${offTarget??'-'}개">${cnt.OFF}${offTarget!==undefined?'/'+offTarget:''}</td><td class="sum">${cnt.V}</td></tr>`;
+    html+=`<td class="sum">${cnt.D}</td><td class="sum">${cnt.E}</td><td class="sum">${cnt.S}</td><td class="sum">${cnt.N}</td>
+      <td class="sum ${offCls}" title="목표 오프수 ${offTarget??'-'}개">${cnt.OFF}${offTarget!==undefined?'/'+offTarget:''}</td>
+      <td class="sum">${cnt.V||''}</td><td class="sum">${workDays}</td></tr>`;
   }
   html+=`</tbody><tfoot>`;
+  const dayCount=(d,fn)=>{let c=0;for(const p of people){const v=getCell(ym,p.id,d);if(fn(v))c++;}return c;};
+  /* 근무인원 합계 줄 */
+  html+=`<tr><td class="namecol">근무인원</td>`;
+  for(let d=1;d<=nd;d++)html+=`<td>${dayCount(d,v=>v==='D'||v==='E'||v==='S'||v==='N')}</td>`;
+  html+=`<td colspan="7"></td></tr>`;
+  /* 근무별 합계: D·E·N은 고정 인원 기준 색 표시, S는 남는 인력이 들어가는 자리 */
   for(const code of ['D','E','S','N']){
     const need=unit.need[code]||0;
-    html+=`<tr><td class="namecol">${code} 인원 (필요 ${need})</td>`;
+    html+=`<tr><td class="namecol">${code} 합계 (기준 ${need})</td>`;
     for(let d=1;d<=nd;d++){
-      let c=0;
-      for(const p of people) if(getCell(ym,p.id,d)===code)c++;
+      const c=dayCount(d,v=>v===code);
       const cls=c<need?'under':c>need?'over':'';
       html+=`<td class="${cls}">${c}</td>`;
     }
-    html+=`<td colspan="4"></td></tr>`;
+    html+=`<td colspan="7"></td></tr>`;
+  }
+  for(const [label,fn] of [['OFF 합계',v=>v==='OFF'],['연차 합계',v=>v==='V']]){
+    html+=`<tr><td class="namecol">${label}</td>`;
+    for(let d=1;d<=nd;d++){const c=dayCount(d,fn);html+=`<td>${c||''}</td>`;}
+    html+=`<td colspan="7"></td></tr>`;
   }
   html+=`</tfoot></table></div>`;
   html+=`<div class="legend">
@@ -723,12 +732,12 @@ function bindRosterTop(){
             S:+root.querySelector('#af-S').value||0, N:+root.querySelector('#af-N').value||0},
       off:+root.querySelector('#af-off').value||0,
       nAfterOff:root.querySelector('#af-nafteroff').checked,
-      noDafterNOFF:root.querySelector('#af-nod').checked,
+      noDafterNOFF:false, // 규칙 삭제됨 (2026-07 사용자 요청)
       maxRun:Math.max(0,+root.querySelector('#af-maxrun').value||0),
       pattern:root.querySelector('#af-pat').value.toUpperCase().replace(/[^DESNF]/g,'')
     };
     const mode=root.querySelector('input[name="af-mode"]:checked').value;
-    S.afCfg={mode,nAfterOff:opts.nAfterOff,noDafterNOFF:opts.noDafterNOFF,maxRun:opts.maxRun,pattern:opts.pattern,v3:true};
+    S.afCfg={mode,nAfterOff:opts.nAfterOff,noDafterNOFF:false,maxRun:opts.maxRun,pattern:opts.pattern,v3:true,v5:true};
     genResult=mode==='cycle'?cyclicFill(opts):autoFill(opts);
     if(!genResult.error)save();
     render();
@@ -777,6 +786,7 @@ function exportXls(){
   h+=`<tr><td></td><td></td><td colspan="${nd}" style="font-size:14pt;font-weight:bold;text-align:center">${y}년 ${m}월 근무표 (${esc(unit.name)})</td></tr>`;
   h+=`<tr>${td('성명','background:#333;color:#fff;font-weight:bold')}${td('구분','background:#333;color:#fff;font-weight:bold')}`;
   for(let d=1;d<=nd;d++){const w=new Date(y,m-1,d).getDay();h+=td(WD[w]+'<br>'+d,'background:#333;color:'+(w===0?'#ff8787':w===6?'#8fbaff':'#fff')+';font-weight:bold');}
+  for(const c of ['D','E','S','N'])h+=td(c,'background:#333;color:#fff;font-weight:bold');
   h+=td('OFF계','background:#333;color:#fff;font-weight:bold')+td('연차계','background:#333;color:#fff;font-weight:bold')+td('근무계','background:#333;color:#fff;font-weight:bold')+'</tr>';
   for(const p of people){
     const c={D:0,E:0,S:0,N:0,OFF:0,V:0};
@@ -786,9 +796,15 @@ function exportXls(){
       if(v)c[v]++;
       row+=td(v==='V'?'연차':(v||''),v?('background:'+COLORS[v]):'');
     }
-    h+=`<tr>${td(esc(p.name),'font-weight:bold')}${td(p.fix?('고정('+p.fix+')'):'교대(D/E/S/N)')}${row}${td(c.OFF)}${td(c.V)}${td(c.D+c.E+c.S+c.N)}</tr>`;
+    h+=`<tr>${td(esc(p.name),'font-weight:bold')}${td(p.fix?('고정('+p.fix+')'):'교대(D/E/S/N)')}${row}${td(c.D)}${td(c.E)}${td(c.S)}${td(c.N)}${td(c.OFF)}${td(c.V)}${td(c.D+c.E+c.S+c.N)}</tr>`;
   }
-  h+=`<tr></tr>`;
+  h+=`<tr>${td('')}${td('근무인원','font-weight:bold')}`;
+  for(let d=1;d<=nd;d++){
+    let c=0;
+    for(const p of people){const v=getCell(ym,p.id,d);if(v==='D'||v==='E'||v==='S'||v==='N')c++;}
+    h+=td(c);
+  }
+  h+=`</tr>`;
   for(const code of ['D','E','S','N','OFF','V']){
     h+=`<tr>${td('')}${td((code==='V'?'연차':code)+' 합계','font-weight:bold')}`;
     for(let d=1;d<=nd;d++){
@@ -799,9 +815,9 @@ function exportXls(){
         const need=unit.need[code]||0;
         if(c<need)bg='background:#ffb3b3';else if(c>need)bg='background:#ffe08a';
       }
-      h+=td(c,bg);
+      h+=td(c||'',bg);
     }
-    h+=`<td></td><td></td><td></td></tr>`;
+    h+=`</tr>`;
   }
   h+='</table>';
   const blob=new Blob(['﻿'+h],{type:'application/vnd.ms-excel'});
