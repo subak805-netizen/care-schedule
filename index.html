@@ -538,7 +538,10 @@ function renderRoster(){
       <b style="font-size:13px">편성 규칙</b>
       <label><input type="checkbox" id="af-nafteroff" ${S.afCfg.nAfterOff?'checked':''}> N &rarr; OFF</label>
       <label>연속 근무 최대 <input type="number" id="af-maxrun" min="0" max="10" value="${S.afCfg.maxRun??4}" style="width:52px">일 <span class="hint">(4 또는 5 권장, 0 = 제한 없음)</span></label>
-      <label>패턴 <input type="text" id="af-pat" value="${esc((S.afCfg.pattern||'').split('').join(' '))}" placeholder="E S D N F" style="width:104px"></label>
+      <label>패턴 <select id="af-pat">
+        <option value="ESDNFF" ${S.afCfg.pattern!=='ESDNF'?'selected':''}>E S D N F F</option>
+        <option value="ESDNF" ${S.afCfg.pattern==='ESDNF'?'selected':''}>E S D N F</option>
+      </select></label>
       <span class="hint">F = 휴무. 전월 마지막 날도 이어서 봅니다 (전월 말일이 N이면 1일은 OFF).</span>
     </div>
     <div style="margin-top:10px"><b style="font-size:13px">직원별 연차일</b>
