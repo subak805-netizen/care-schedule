@@ -312,12 +312,25 @@ function autoFill(opts){
       if(preset[p.id].has(d)){resters.add(p.id);continue;}
       if(opts.nAfterOff&&nStreak[p.id]>=1){resters.add(p.id);continue;} // N 다음날 무조건 OFF
       if(restLeft[p.id]-presetLeft(p)<=0)continue;
-      if(opts.maxRun&&wStreak[p.id]>=opts.maxRun){resters.add(p.id);continue;} // 연속 근무 한도 도달 → 강제 휴무
+      if(opts.maxRun){
+        if(wStreak[p.id]>=opts.maxRun){resters.add(p.id);continue;} // 연속 근무 한도 도달 → 강제 휴무
+        /* 오늘 일하면 남은 휴무로 연속 한도를 못 지키게 되는 경우도 강제 휴무 (월말 5일 연속 방지) */
+        const q=restLeft[p.id], m=opts.maxRun;
+        if((m-wStreak[p.id]-1)+q*(m+1)<daysLeft-1){resters.add(p.id);continue;}
+      }
       if(restLeft[p.id]>=daysLeft)resters.add(p.id);
     }
     let target=Math.round(restSlotsLeft/daysLeft);
     target=Math.max(target,resters.size);
-    const cands=people.filter(p=>!resters.has(p.id)&&restLeft[p.id]-presetLeft(p)>0)
+    const cands=people.filter(p=>{
+        if(resters.has(p.id)||restLeft[p.id]-presetLeft(p)<=0)return false;
+        /* 오늘 쉬면 남은 휴무로 연속 한도를 못 지키게 되는 사람은 휴무를 아껴둠 (월말 5일 연속 방지) */
+        if(opts.maxRun){
+          const q=restLeft[p.id]-1, R=daysLeft-1;
+          if(opts.maxRun*(q+1)<R-q)return false;
+        }
+        return true;
+      })
       .sort((a,b)=>patScore(a,'F',d)-patScore(b,'F',d) // 패턴상 오늘 쉴 차례인 사람 우선
         ||wStreak[b.id]-wStreak[a.id] // 연속 근무가 긴 사람 먼저 쉬게
         ||restLeft[b.id]/daysLeft-restLeft[a.id]/daysLeft
@@ -342,10 +355,18 @@ function autoFill(opts){
         const pool=workers.filter(p=>!assigned[p.id]&&!(code==='D'&&noD.has(p.id)));
         if(!pool.length){shortage[d]=(shortage[d]||[]);shortage[d].push(code+' '+slots[code]+'명');break;}
         const spare=p=>restLeft[p.id]-presetLeft(p)>0?0:1; // 야간 뒤에 쉴 여유가 있는가
+        /* N을 받으면 내일 강제 OFF로 휴무가 하나 빠짐 — 그 뒤에도 연속 한도를 지킬 수 있는 사람인가 */
+        const affordN=p=>{
+          const q=restLeft[p.id]-presetLeft(p);
+          if(q<=0)return 1;
+          if(opts.maxRun&&opts.maxRun*q<daysLeft-1-q)return 1;
+          return 0;
+        };
         const totalW=p=>counts[p.id].D+counts[p.id].E+counts[p.id].S+counts[p.id].N;
         if(code==='N'){
           /* N은 골고루: 그제도 N이던 사람(N OFF N 반복)은 후순위, N 횟수 적은 사람 우선 */
-          pool.sort((a,b)=>spare(a)-spare(b)
+          pool.sort((a,b)=>affordN(a)-affordN(b)
+            ||spare(a)-spare(b)
             ||(grid[a.id][d-2]==='N'?1:0)-(grid[b.id][d-2]==='N'?1:0)
             ||counts[a.id].N-counts[b.id].N
             ||patScore(a,code,d)-patScore(b,code,d)
@@ -367,6 +388,55 @@ function autoFill(opts){
       else{const c=assigned[p.id];grid[p.id][d]=c;counts[p.id][c]++;nStreak[p.id]=c==='N'?nStreak[p.id]+1:0;wStreak[p.id]++;}
     }
   }
+  /* 마무리 수리: 드물게 남는 연속 초과·OFF 초과를 두 사람의 날짜 교환으로 해결 */
+  const isW=v=>v==='D'||v==='E'||v==='S'||v==='N';
+  const gv=(p,dd)=>grid[p.id][dd]||'';
+  const okPerson=p=>{ // 한 사람 한 달 전체 규칙 검증 (전월 이월 포함)
+    let run=0;
+    for(let k=0;k>-12;k--){if(isW(gv(p,k)))run++;else break;}
+    for(let dd=1;dd<=nd;dd++){
+      const v=gv(p,dd);
+      if(isW(v)){run++;if(opts.maxRun&&run>opts.maxRun)return false;}else run=0;
+      if(opts.nAfterOff&&gv(p,dd-1)==='N'&&isW(v))return false;
+    }
+    return true;
+  };
+  const notes=[];
+  for(const p of people){
+    /* OFF 초과: 하루를 S로 전환 (규칙 통과할 때만) */
+    let offC=()=>Object.keys(grid[p.id]).filter(dd=>+dd>=1&&grid[p.id][dd]==='OFF').length;
+    let guard=0;
+    while(offC()>opts.off&&guard++<10){
+      let done=false;
+      for(let dd=1;dd<=nd&&!done;dd++){
+        if(grid[p.id][dd]!=='OFF')continue;
+        grid[p.id][dd]='S';
+        if(okPerson(p)){done=true;extraS++;}else grid[p.id][dd]='OFF';
+      }
+      if(!done)break;
+    }
+    /* 연속 초과: p가 그날 쉬고, 그날 쉬던 q가 대신 근무 + 반대날 맞교환 */
+    for(let dd=1;dd<=nd;dd++){
+      if(okPerson(p))break;
+      if(!isW(gv(p,dd)))continue;
+      let swapped=false;
+      for(const q of people){
+        if(q===p||gv(q,dd)!=='OFF'||preset[q.id].has(dd))continue;
+        if(q.fix&&q.fix!==gv(p,dd))continue;
+        for(let d2=Math.max(1,dd-7);d2<=Math.min(nd,dd+7)&&!swapped;d2++){
+          if(d2===dd||gv(p,d2)!=='OFF'||preset[p.id].has(d2)||!isW(gv(q,d2)))continue;
+          if(p.fix&&p.fix!==gv(q,d2))continue;
+          const a=gv(p,dd),b=gv(q,d2);
+          grid[p.id][dd]='OFF';grid[q.id][dd]=a;
+          grid[q.id][d2]='OFF';grid[p.id][d2]=b;
+          if(okPerson(p)&&okPerson(q))swapped=true;
+          else{grid[p.id][dd]=a;grid[q.id][dd]='OFF';grid[q.id][d2]=b;grid[p.id][d2]='OFF';}
+        }
+        if(swapped)break;
+      }
+    }
+    if(!okPerson(p))notes.push(`${p.name}: 연속 근무 한도를 규칙 안에서 못 맞춘 부분이 있습니다 — 손으로 조정해 주세요`);
+  }
   /* 결과 반영 (경계용 0·-1일 제외, 1~말일만 저장) */
   for(const p of people){
     if(!S.roster[opts.ym])S.roster[opts.ym]={};
@@ -374,7 +444,7 @@ function autoFill(opts){
     for(let d=1;d<=nd;d++)if(grid[p.id][d])clean[d]=grid[p.id][d];
     S.roster[opts.ym][p.id]=clean;
   }
-  return {shortage,extraS,surplus,capacity,need:baseNeed*nd};
+  return {shortage,extraS,surplus,capacity,need:baseNeed*nd,notes};
 }
 
 /* ===== 순환 편성: 패턴(예: ESDNFF)을 전원이 하루씩 어긋나게 그대로 반복 =====
@@ -425,7 +495,49 @@ function cyclicFill(opts){
     if(!skipRun&&opts.maxRun&&runAround(p,d)>opts.maxRun)return false;
     return true;
   };
-  /* 2) 지정 연차: 휴무일이면 그대로 연차, 근무일이면 그날 OFF인 사람과 맞바꿈 */
+  /* 2) 일별 개수 보정: 패턴이 어긋나더라도 D·E·N 개수는 무조건 기준대로 (남는 인력은 전부 S) */
+  const canSwitch=(p,d,code)=>{ // 이미 근무 중인 사람의 근무 종류만 바꿀 때
+    if(opts.nAfterOff&&val(p,d-1)==='N')return false;
+    if(opts.nAfterOff&&code==='N'&&d<nd&&isWorkCode(val(p,d+1)))return false; // N이 되면 다음날 쉬어야
+    return true;
+  };
+  for(let d=1;d<=nd;d++){
+    for(const code of ['D','E','N']){ // 초과분 먼저 S로 내려서 풀 확보
+      const need=opts.need[code]||0;
+      let have=people.filter(p=>grid[p.id][d]===code).length;
+      while(have>need){
+        const cand=people.filter(p=>grid[p.id][d]===code&&!p.fix&&!preset[p.id].has(d));
+        if(!cand.length)break;
+        cand.sort((a,b)=>Object.values(grid[b.id]).filter(v=>v===code).length-Object.values(grid[a.id]).filter(v=>v===code).length);
+        grid[cand[0].id][d]='S';have--;
+      }
+    }
+    for(const code of ['N','D','E']){ // 부족분은 S에서 끌어옴 (제약 많은 N부터)
+      const need=opts.need[code]||0;
+      let have=people.filter(p=>grid[p.id][d]===code).length;
+      while(have<need){
+        const pool=people.filter(p=>grid[p.id][d]==='S'&&!p.fix&&!preset[p.id].has(d)&&canSwitch(p,d,code));
+        if(pool.length){
+          pool.sort((a,b)=>Object.values(grid[a.id]).filter(v=>v===code).length-Object.values(grid[b.id]).filter(v=>v===code).length);
+          grid[pool[0].id][d]=code;have++;continue;
+        }
+        /* S에서 직접 못 끌어오면(주로 N): 내일 쉬는 D·E 근무자를 N으로 돌리고 그 자리를 S가 메꿈 */
+        let done=false;
+        outer:
+        for(const w of people){
+          const wc=grid[w.id][d];
+          if(!isWorkCode(wc)||wc===code||w.fix||preset[w.id].has(d)||!canSwitch(w,d,code))continue;
+          for(const q of people){
+            if(q===w||grid[q.id][d]!=='S'||q.fix||preset[q.id].has(d)||!canSwitch(q,d,wc))continue;
+            grid[w.id][d]=code;grid[q.id][d]=wc;done=true;break outer;
+          }
+        }
+        if(!done)break; // 최종 부족은 아래 shortage에서 보고
+        have++;
+      }
+    }
+  }
+  /* 3) 지정 연차: 휴무일이면 그대로 연차, 근무일이면 그날 OFF인 사람과 맞바꿈 */
   for(const p of people){
     for(const d of [...preset[p.id]].sort((a,b)=>a-b)){
       if(d<1||d>nd)continue;
@@ -455,7 +567,7 @@ function cyclicFill(opts){
       if(!done)notes.push(`${d}일: ${esc(p.name)} 연차 자리(${orig})를 규칙(야간·연속제한) 안에서 대신할 사람이 없습니다 — 그날은 손으로 조정해 주세요`);
     }
   }
-  /* 3) OFF 초과분을 S로 전환해 오프수 맞춤 (기준표의 "S 2명인 날") */
+  /* 4) OFF 초과분을 S로 전환해 오프수 맞춤 (기준표의 "S 2명인 날") */
   let extraS=0;
   for(const p of people){
     const offDays=()=>Object.keys(grid[p.id]).map(Number).filter(d=>grid[p.id][d]==='OFF');
@@ -484,7 +596,12 @@ function cyclicFill(opts){
     }
   }
   const baseNeed=['D','E','S','N'].reduce((a,c)=>a+(opts.need[c]||0),0);
-  return {shortage,extraS,notes,cycle:cyc,capacity:n*nd-people.reduce((a,p)=>a+Object.values(grid[p.id]).filter(v=>v==='OFF'||v==='V').length,0),need:baseNeed*nd,surplus:0};
+  let offBad=0; // OFF 개수가 목표와 다른 사람 수 (개수 최우선 판단용)
+  for(const p of people){
+    const o=Object.values(grid[p.id]).filter(v=>v==='OFF').length;
+    if(o!==opts.off)offBad++;
+  }
+  return {shortage,extraS,notes,offBad,cycle:cyc,capacity:n*nd-people.reduce((a,p)=>a+Object.values(grid[p.id]).filter(v=>v==='OFF'||v==='V').length,0),need:baseNeed*nd,surplus:0};
 }
 
 /* ===== 근무표 탭 ===== */
@@ -531,7 +648,7 @@ function renderRoster(){
     </div>
     <div class="row" style="margin-top:8px">
       <b style="font-size:13px">방식</b>
-      <label><input type="radio" name="af-mode" value="cycle" ${S.afCfg.mode!=='greedy'?'checked':''}> 순환 <span class="hint">패턴을 전원이 하루씩 어긋나게 그대로 반복 (기준표 방식)</span></label>
+      <label><input type="radio" name="af-mode" value="cycle" ${S.afCfg.mode!=='greedy'?'checked':''}> 순환 <span class="hint">패턴 기본 + D·E·N·OFF 개수는 무조건 기준대로 맞춤 (기준표 방식)</span></label>
       <label><input type="radio" name="af-mode" value="greedy" ${S.afCfg.mode==='greedy'?'checked':''}> 자동 <span class="hint">매일 필요인원에 맞춰 채움</span></label>
     </div>
     <div class="row" style="margin-top:8px">
@@ -745,6 +862,14 @@ function bindRosterTop(){
     const mode=root.querySelector('input[name="af-mode"]:checked').value;
     S.afCfg={mode,nAfterOff:opts.nAfterOff,noDafterNOFF:false,maxRun:opts.maxRun,pattern:opts.pattern,v3:true,v5:true};
     genResult=mode==='cycle'?cyclicFill(opts):autoFill(opts);
+    /* 개수 최우선: 순환으로 D·E·N·OFF 개수가 하나라도 안 맞으면 자동(패턴 우선) 방식으로 재편성 */
+    if(mode==='cycle'&&!genResult.error&&(Object.keys(genResult.shortage||{}).length||genResult.offBad)){
+      genResult=autoFill(opts);
+      if(!genResult.error){
+        genResult.notes=genResult.notes||[];
+        genResult.notes.unshift('패턴 그대로는 D·E·N·OFF 개수를 못 맞추는 달이라, 개수를 우선으로 하고 패턴은 최대한 따르는 방식으로 편성했습니다');
+      }
+    }
     if(!genResult.error)save();
     render();
   };
