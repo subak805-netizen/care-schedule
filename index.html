@@ -277,16 +277,17 @@ function autoFill(opts){
   const [py,pm]=ymParts(prevYm), ndPrev=daysIn(py,pm);
 
   const isWorkCode=v=>v==='D'||v==='E'||v==='S'||v==='N';
-  const grid={}, restLeft={}, nStreak={}, wStreak={}, counts={};
+  const grid={}, restLeft={}, nStreak={}, wStreak={}, oStreak={}, counts={};
   for(const p of people){
     grid[p.id]={};restLeft[p.id]=restOf(p);counts[p.id]={D:0,E:0,S:0,N:0};
     const pr=prevRoster[p.id]||{};
     grid[p.id][0]=pr[ndPrev]||''; grid[p.id][-1]=pr[ndPrev-1]||'';
     nStreak[p.id]=(grid[p.id][0]==='N')?1:0;
-    // 전월 말 연속 근무일수 이월 (최대 10일까지 역추적)
-    let ws=0;
+    // 전월 말 연속 근무·연속 OFF 이월 (최대 10일까지 역추적)
+    let ws=0,os=0;
     for(let k=0;k<10;k++){const v=pr[ndPrev-k];if(isWorkCode(v))ws++;else break;}
-    wStreak[p.id]=ws;
+    for(let k=0;k<10;k++){if(pr[ndPrev-k]==='OFF')os++;else break;}
+    wStreak[p.id]=ws;oStreak[p.id]=os;
   }
   let restSlotsLeft=people.reduce((a,p)=>a+restOf(p),0);
   const shortage={}; let extraS=0;
@@ -324,6 +325,7 @@ function autoFill(opts){
     target=Math.max(target,resters.size);
     const cands=people.filter(p=>{
         if(resters.has(p.id)||restLeft[p.id]-presetLeft(p)<=0)return false;
+        if(oStreak[p.id]>=2)return false; // OFF는 이어서 2개까지만
         /* 오늘 쉬면 남은 휴무로 연속 한도를 못 지키게 되는 사람은 휴무를 아껴둠 (월말 5일 연속 방지) */
         if(opts.maxRun){
           const q=restLeft[p.id]-1, R=daysLeft-1;
@@ -384,19 +386,26 @@ function autoFill(opts){
     for(const p of workers)if(!assigned[p.id]){assigned[p.id]='S';extraS++;} // 여유 인력은 S 추가(깍두기)
 
     for(const p of people){
-      if(resters.has(p.id)){restLeft[p.id]--;restSlotsLeft--;nStreak[p.id]=0;wStreak[p.id]=0;grid[p.id][d]=preset[p.id].has(d)?'V':'OFF';}
-      else{const c=assigned[p.id];grid[p.id][d]=c;counts[p.id][c]++;nStreak[p.id]=c==='N'?nStreak[p.id]+1:0;wStreak[p.id]++;}
+      if(resters.has(p.id)){
+        restLeft[p.id]--;restSlotsLeft--;nStreak[p.id]=0;wStreak[p.id]=0;
+        const isV=preset[p.id].has(d);
+        grid[p.id][d]=isV?'V':'OFF';
+        oStreak[p.id]=isV?0:oStreak[p.id]+1; // OFF 연속 (연차는 별개)
+      }
+      else{const c=assigned[p.id];grid[p.id][d]=c;counts[p.id][c]++;nStreak[p.id]=c==='N'?nStreak[p.id]+1:0;wStreak[p.id]++;oStreak[p.id]=0;}
     }
   }
   /* 마무리 수리: 드물게 남는 연속 초과·OFF 초과를 두 사람의 날짜 교환으로 해결 */
   const isW=v=>v==='D'||v==='E'||v==='S'||v==='N';
   const gv=(p,dd)=>grid[p.id][dd]||'';
   const okPerson=p=>{ // 한 사람 한 달 전체 규칙 검증 (전월 이월 포함)
-    let run=0;
+    let run=0,orun=0;
     for(let k=0;k>-12;k--){if(isW(gv(p,k)))run++;else break;}
+    for(let k=0;k>-12;k--){if(gv(p,k)==='OFF')orun++;else break;}
     for(let dd=1;dd<=nd;dd++){
       const v=gv(p,dd);
       if(isW(v)){run++;if(opts.maxRun&&run>opts.maxRun)return false;}else run=0;
+      if(v==='OFF'){orun++;if(orun>2)return false;}else orun=0; // OFF는 이어서 2개까지만
       if(opts.nAfterOff&&gv(p,dd-1)==='N'&&isW(v))return false;
     }
     return true;
@@ -655,6 +664,7 @@ function renderRoster(){
       <b style="font-size:13px">편성 규칙</b>
       <label><input type="checkbox" id="af-nafteroff" ${S.afCfg.nAfterOff?'checked':''}> N &rarr; OFF</label>
       <label>연속 근무 최대 <input type="number" id="af-maxrun" min="0" max="10" value="${S.afCfg.maxRun??4}" style="width:52px">일 <span class="hint">(4 또는 5 권장, 0 = 제한 없음)</span></label>
+      <span style="font-size:13px">OFF 연속 최대 2일</span>
       <label>패턴 <select id="af-pat">
         <option value="ESDNFF" ${S.afCfg.pattern!=='ESDNF'?'selected':''}>E S D N F F</option>
         <option value="ESDNF" ${S.afCfg.pattern==='ESDNF'?'selected':''}>E S D N F</option>
@@ -707,9 +717,10 @@ function renderRoster(){
   for(const p of people){
     html+=`<tr><td class="namecol">${esc(p.name)}${p.fix?` <span style="color:var(--sub);font-weight:400;font-size:11px">${p.fix}고정</span>`:''}</td>`;
     const cnt={D:0,E:0,S:0,N:0,OFF:0,V:0};
-    // 전월 말 연속 근무 이월
-    let run=0;
+    // 전월 말 연속 근무·연속 OFF 이월
+    let run=0,offRun=0;
     for(let k=0;k<10;k++){const pv=cellRel(p.id,-k);if(pv==='D'||pv==='E'||pv==='S'||pv==='N')run++;else break;}
+    for(let k=0;k<10;k++){if(cellRel(p.id,-k)==='OFF')offRun++;else break;}
     for(let d=1;d<=nd;d++){
       const v=getCell(ym,p.id,d);
       if(v)cnt[v]++;
@@ -725,6 +736,11 @@ function renderRoster(){
       if(maxRun>0&&run>maxRun){
         nw='nwarn';
         if(run===maxRun+1)warns.push(`${p.name}: ${d}일 — ${maxRun+1}일 연속 근무 (최대 ${maxRun}일)`);
+      }
+      offRun=v==='OFF'?offRun+1:0;
+      if(offRun>2){
+        nw='nwarn';
+        if(offRun===3)warns.push(`${p.name}: ${d}일 — OFF 3일 연속 (최대 2일)`);
       }
       html+=`<td class="cell ${v?'v-'+v:''} ${nw}" data-p="${p.id}" data-d="${d}">${v==='V'?'연':v}</td>`;
     }
