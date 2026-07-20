@@ -145,6 +145,10 @@ table.set input[type=text]{width:110px}
 /* ===== 데이터 ===== */
 const LS_KEY='care_schedule_v1';
 const SHIFT_CODES=['D','E','S','N','OFF','V'];
+function ORD(){ // 근무 표시 순서 (설정에서 변경 가능)
+  const o=(S.shiftOrder||[]).filter(c=>['D','E','S','N'].includes(c));
+  return (o.length===4&&new Set(o).size===4)?o:['E','S','D','N'];
+}
 const DEFAULTS={
   shifts:{
     D:{label:'주간',hours:8},
@@ -166,8 +170,9 @@ const DEFAULTS={
   holidays:{ '2026':[10,11,10,8,12,9,9,11,10,11,9,9] },
   offs:{ '2026':[9,9,9,8,9,9,9,10,9,9,9,9] },
   roster:{},
+  shiftOrder:['E','S','D','N'], // 근무 표시 순서
   payCfg:{nightH:4}, // 야간 1회당 가산 환산시간 (8시간×0.5배 기준)
-  afCfg:{mode:'cycle',nAfterOff:true,noDafterNOFF:false,maxRun:4,pattern:'ESDNFF',v3:true,v5:true}, // 편성 방식·규칙 (저장됨)
+  afCfg:{mode:'cycle',nAfterOff:true,noDafterNOFF:false,noED:true,maxRun:4,pattern:'ESDNFF',v3:true,v5:true}, // 편성 방식·규칙 (저장됨)
   ui:{ym:'2026-07',unitId:'u1',calcYear:'2026'}
 };
 /* 대한민국 법정공휴일+대체공휴일 (근로자의날·제헌절 제외 — 기존 엑셀 집계 기준과 동일)
@@ -204,6 +209,8 @@ function load(){
     if(d.afCfg.maxRun===undefined)d.afCfg.maxRun=4; // 5일 연속 근무 금지 (2026-07 요청)
     if(!d.afCfg.mode){d.afCfg.mode='cycle';if(d.afCfg.pattern==='ESDNF')d.afCfg.pattern='ESDNFF';} // 순환 편성 기본 (2026-07 기준표 요청)
     if(!d.afCfg.v5){d.afCfg.noDafterNOFF=false;d.afCfg.v5=true;} // N→OFF→D 금지 규칙 삭제 (2026-07 사용자 요청)
+    if(d.afCfg.noED===undefined)d.afCfg.noED=true; // E 다음날 D 금지 (2026-07 사용자 요청)
+    if(!d.shiftOrder)d.shiftOrder=['E','S','D','N']; // 표시 순서
     return d;
   }catch(e){ return structuredClone(DEFAULTS); }
 }
@@ -323,6 +330,7 @@ function autoFill(opts){
     }
     let target=Math.round(restSlotsLeft/daysLeft);
     target=Math.max(target,resters.size);
+    target=Math.min(target,Math.max(resters.size,n-baseNeed)); // 필요인원만큼은 반드시 근무에 남김
     const cands=people.filter(p=>{
         if(resters.has(p.id)||restLeft[p.id]-presetLeft(p)<=0)return false;
         if(oStreak[p.id]>=2)return false; // OFF는 이어서 2개까지만
@@ -333,9 +341,9 @@ function autoFill(opts){
         }
         return true;
       })
-      .sort((a,b)=>patScore(a,'F',d)-patScore(b,'F',d) // 패턴상 오늘 쉴 차례인 사람 우선
-        ||wStreak[b.id]-wStreak[a.id] // 연속 근무가 긴 사람 먼저 쉬게
-        ||restLeft[b.id]/daysLeft-restLeft[a.id]/daysLeft
+      .sort((a,b)=>wStreak[b.id]-wStreak[a.id] // 연속 근무가 긴 사람 먼저 (한꺼번에 강제휴무 몰림 방지)
+        ||restLeft[b.id]/daysLeft-restLeft[a.id]/daysLeft // 휴무가 밀린 사람 먼저 (월말 OFF 몰림 방지)
+        ||patScore(a,'F',d)-patScore(b,'F',d) // 그 다음에 패턴상 쉴 차례
         ||((people.indexOf(a)+d)%n)-((people.indexOf(b)+d)%n));
     for(const p of cands){if(resters.size>=target)break;resters.add(p.id);}
 
@@ -346,16 +354,33 @@ function autoFill(opts){
     for(const p of workers){ // 고정 근무 직원
       if(!assigned[p.id]&&p.fix){assigned[p.id]=p.fix;slots[p.fix]--;}
     }
-    /* N → OFF → 바로 D 금지: 어제 쉬었고 그제가 야간이던 사람은 오늘 D 불가 (전월 경계 포함) */
+    /* 오늘 D를 못 서는 사람 모음 (전월 경계 포함) */
     const noD=new Set();
-    if(opts.noDafterNOFF)for(const p of workers){
+    for(const p of workers){
       const g=grid[p.id];
-      if((g[d-1]==='OFF'||g[d-1]==='V')&&g[d-2]==='N')noD.add(p.id);
+      if(opts.noDafterNOFF&&(g[d-1]==='OFF'||g[d-1]==='V')&&g[d-2]==='N')noD.add(p.id);
+      if(opts.noED&&g[d-1]==='E')noD.add(p.id); // E 다음날 D 금지
     }
     for(const code of ['N','S','E','D']){ // 같은 근무 횟수가 적은 사람부터
       while(slots[code]>0){
         const pool=workers.filter(p=>!assigned[p.id]&&!(code==='D'&&noD.has(p.id)));
-        if(!pool.length){shortage[d]=(shortage[d]||[]);shortage[d].push(code+' '+slots[code]+'명');break;}
+        if(!pool.length){
+          /* 남은 사람이 규칙 탓에 이 근무를 못 서면, 이미 배정된 사람과 역할 맞교환 */
+          let fixed=false;
+          outer:
+          for(const w of workers){
+            if(!assigned[w.id]||assigned[w.id]===code)continue;
+            if(code==='D'&&noD.has(w.id))continue;
+            const wc=assigned[w.id];
+            for(const q of workers){
+              if(assigned[q.id]||q===w)continue;
+              if(wc==='D'&&noD.has(q.id))continue;
+              assigned[w.id]=code;assigned[q.id]=wc;fixed=true;break outer;
+            }
+          }
+          if(!fixed){shortage[d]=(shortage[d]||[]);shortage[d].push(code+' '+slots[code]+'명');break;}
+          slots[code]--;continue;
+        }
         const spare=p=>restLeft[p.id]-presetLeft(p)>0?0:1; // 야간 뒤에 쉴 여유가 있는가
         /* N을 받으면 내일 강제 OFF로 휴무가 하나 빠짐 — 그 뒤에도 연속 한도를 지킬 수 있는 사람인가 */
         const affordN=p=>{
@@ -407,6 +432,7 @@ function autoFill(opts){
       if(isW(v)){run++;if(opts.maxRun&&run>opts.maxRun)return false;}else run=0;
       if(v==='OFF'){orun++;if(orun>2)return false;}else orun=0; // OFF는 이어서 2개까지만
       if(opts.nAfterOff&&gv(p,dd-1)==='N'&&isW(v))return false;
+      if(opts.noED&&gv(p,dd-1)==='E'&&v==='D')return false; // E 다음날 D 금지
     }
     return true;
   };
@@ -444,7 +470,29 @@ function autoFill(opts){
         if(swapped)break;
       }
     }
-    if(!okPerson(p))notes.push(`${p.name}: 연속 근무 한도를 규칙 안에서 못 맞춘 부분이 있습니다 — 손으로 조정해 주세요`);
+    /* OFF 3연속 등: 반대 방향 — p가 그날 근무하고, 그날 근무하던 q가 대신 쉼 + 반대날 맞교환 */
+    for(let dd=1;dd<=nd;dd++){
+      if(okPerson(p))break;
+      if(gv(p,dd)!=='OFF'||preset[p.id].has(dd))continue;
+      let swapped=false;
+      for(const q of people){
+        if(q===p)continue;
+        const qc=gv(q,dd);
+        if(!isW(qc)||preset[q.id].has(dd))continue;
+        if(p.fix&&p.fix!==qc)continue;
+        for(let d2=Math.max(1,dd-7);d2<=Math.min(nd,dd+7)&&!swapped;d2++){
+          if(d2===dd||!isW(gv(p,d2))||preset[p.id].has(d2)||gv(q,d2)!=='OFF'||preset[q.id].has(d2))continue;
+          if(q.fix&&q.fix!==gv(p,d2))continue;
+          const a=gv(p,d2);
+          grid[p.id][dd]=qc;grid[q.id][dd]='OFF';
+          grid[p.id][d2]='OFF';grid[q.id][d2]=a;
+          if(okPerson(p)&&okPerson(q))swapped=true;
+          else{grid[p.id][dd]='OFF';grid[q.id][dd]=qc;grid[p.id][d2]=a;grid[q.id][d2]='OFF';}
+        }
+        if(swapped)break;
+      }
+    }
+    if(!okPerson(p))notes.push(`${p.name}: 규칙(연속 근무·OFF 연속)을 다 못 맞춘 부분이 있습니다 — 손으로 조정해 주세요`);
   }
   /* 결과 반영 (경계용 0·-1일 제외, 1~말일만 저장) */
   for(const p of people){
@@ -501,6 +549,8 @@ function cyclicFill(opts){
     if(opts.nAfterOff&&val(p,d-1)==='N')return false;                       // N 다음날은 OFF
     if(opts.nAfterOff&&code==='N'&&d<nd&&isWorkCode(val(p,d+1)))return false; // N이면 다음날 쉬어야
     if(opts.noDafterNOFF&&code==='D'&&(val(p,d-1)==='OFF'||val(p,d-1)==='V')&&val(p,d-2)==='N')return false;
+    if(opts.noED&&code==='D'&&val(p,d-1)==='E')return false; // E 다음날 D 금지
+    if(opts.noED&&code==='E'&&d<nd&&val(p,d+1)==='D')return false; // 내일이 D인 사람에게 E 금지
     if(!skipRun&&opts.maxRun&&runAround(p,d)>opts.maxRun)return false;
     return true;
   };
@@ -508,6 +558,8 @@ function cyclicFill(opts){
   const canSwitch=(p,d,code)=>{ // 이미 근무 중인 사람의 근무 종류만 바꿀 때
     if(opts.nAfterOff&&val(p,d-1)==='N')return false;
     if(opts.nAfterOff&&code==='N'&&d<nd&&isWorkCode(val(p,d+1)))return false; // N이 되면 다음날 쉬어야
+    if(opts.noED&&code==='D'&&val(p,d-1)==='E')return false; // E 다음날 D 금지
+    if(opts.noED&&code==='E'&&d<nd&&val(p,d+1)==='D')return false; // 내일이 D인 사람에게 E 금지
     return true;
   };
   for(let d=1;d<=nd;d++){
@@ -650,7 +702,7 @@ function renderRoster(){
     html+=`<div style="margin-top:12px;padding:12px;background:#f7f9fc;border:1px solid var(--line);border-radius:10px">
     <div class="row">
       <b>하루 필요인원</b>
-      ${['D','E','N'].map(c=>`<label>${c} <input type="number" min="0" max="20" id="af-${c}" value="${unit?unit.need[c]||0:0}"></label>`).join('')}
+      ${ORD().filter(c=>c!=='S').map(c=>`<label>${c} <input type="number" min="0" max="20" id="af-${c}" value="${unit?unit.need[c]||0:0}"></label>`).join('')}
       <label>OFF <input type="number" min="0" max="20" id="af-off" value="${offDefault}"></label>
       <span class="hint">D·E·N·OFF는 고정 기준, 남는 인력은 전부 S로 들어갑니다 (S는 입력하지 않음)</span>
       <button class="btn primary" id="afRun">편성 실행</button>
@@ -663,6 +715,7 @@ function renderRoster(){
     <div class="row" style="margin-top:8px">
       <b style="font-size:13px">편성 규칙</b>
       <label><input type="checkbox" id="af-nafteroff" ${S.afCfg.nAfterOff?'checked':''}> N &rarr; OFF</label>
+      <label><input type="checkbox" id="af-noed" ${S.afCfg.noED?'checked':''}> E 다음날 D 금지</label>
       <label>연속 근무 최대 <input type="number" id="af-maxrun" min="0" max="10" value="${S.afCfg.maxRun??4}" style="width:52px">일 <span class="hint">(4 또는 5 권장, 0 = 제한 없음)</span></label>
       <span style="font-size:13px">OFF 연속 최대 2일</span>
       <label>패턴 <select id="af-pat">
@@ -689,7 +742,7 @@ function renderRoster(){
   html+=`<div class="row" style="margin-top:10px">
     <span class="hint">배정할 근무를 고른 뒤 칸을 클릭하거나 드래그하세요.</span>
     <div class="palette" id="palette">
-      ${SHIFT_CODES.map(c=>`<button class="pal-${c} ${brush===c?'sel':''}" data-b="${c}">${c==='V'?'연차':c}</button>`).join('')}
+      ${[...ORD(),'OFF','V'].map(c=>`<button class="pal-${c} ${brush===c?'sel':''}" data-b="${c}">${c==='V'?'연차':c}</button>`).join('')}
       <button class="pal-X ${brush===''?'sel':''}" data-b="">지우기</button>
     </div>
   </div></div>`;
@@ -706,7 +759,7 @@ function renderRoster(){
     const w=new Date(y,m-1,d).getDay();
     html+=`<th class="${w===0?'sun':w===6?'sat':''}">${d}<br><span style="font-weight:400">${WD[w]}</span></th>`;
   }
-  html+=`<th>D</th><th>E</th><th>S</th><th>N</th><th>OFF</th><th>연차</th><th>근무</th>`;
+  html+=ORD().map(c=>`<th>${c}</th>`).join('')+`<th>OFF</th><th>연차</th><th>근무</th>`;
   html+=`</tr></thead><tbody>`;
 
   const warns=[];
@@ -732,6 +785,10 @@ function renderRoster(){
         nw='nwarn';
         warns.push(`${p.name}: ${d}일 — N 다음날은 OFF여야 하는데 ${v} 배정`);
       }
+      if(S.afCfg.noED&&prev==='E'&&v==='D'){
+        nw='nwarn';
+        warns.push(`${p.name}: ${d}일 — E 다음날 D 금지`);
+      }
       run=isWork(v)?run+1:0;
       if(maxRun>0&&run>maxRun){
         nw='nwarn';
@@ -746,7 +803,7 @@ function renderRoster(){
     }
     const workDays=cnt.D+cnt.E+cnt.S+cnt.N;
     const offCls=offTarget===undefined?'':(cnt.OFF===offTarget?'good':'bad');
-    html+=`<td class="sum">${cnt.D}</td><td class="sum">${cnt.E}</td><td class="sum">${cnt.S}</td><td class="sum">${cnt.N}</td>
+    html+=ORD().map(c=>`<td class="sum">${cnt[c]}</td>`).join('')+`
       <td class="sum ${offCls}" title="목표 오프수 ${offTarget??'-'}개">${cnt.OFF}${offTarget!==undefined?'/'+offTarget:''}</td>
       <td class="sum">${cnt.V||''}</td><td class="sum">${workDays}</td></tr>`;
   }
@@ -759,7 +816,7 @@ function renderRoster(){
   /* 근무별 합계: D·E·N은 고정 인원 기준 색 표시, S는 남는 인력 자리라 기준 없음 — 평소보다 많은 날만 노랑 */
   let sMin=Infinity;
   for(let d=1;d<=nd;d++)sMin=Math.min(sMin,dayCount(d,v=>v==='S'));
-  for(const code of ['D','E','S','N']){
+  for(const code of ORD()){
     const flex=code==='S';
     const need=unit.need[code]||0;
     html+=`<tr><td class="namecol">${code} 합계${flex?'':` (기준 ${need})`}</td>`;
@@ -777,12 +834,7 @@ function renderRoster(){
   }
   html+=`</tfoot></table></div>`;
   html+=`<div class="legend">
-    <span><i style="background:var(--c-D)"></i>D</span>
-    <span><i style="background:var(--c-E)"></i>E</span>
-    <span><i style="background:var(--c-S)"></i>S</span>
-    <span><i style="background:var(--c-N)"></i>N</span>
-    <span><i style="background:var(--c-OFF)"></i>OFF</span>
-    <span><i style="background:var(--c-V)"></i>연차</span>
+    ${[...ORD(),'OFF','V'].map(c=>`<span><i style="background:var(--c-${c})"></i>${c==='V'?'연차':c}</span>`).join('')}
     <span>아래 합계: 빨강=필요인원 미달, 주황=초과</span>
   </div>`;
   if(warns.length){
@@ -871,12 +923,13 @@ function bindRosterTop(){
             S:0, N:+root.querySelector('#af-N').value||0}, // S는 남는 인력이 자동으로 채움
       off:+root.querySelector('#af-off').value||0,
       nAfterOff:root.querySelector('#af-nafteroff').checked,
+      noED:root.querySelector('#af-noed').checked,
       noDafterNOFF:false, // 규칙 삭제됨 (2026-07 사용자 요청)
       maxRun:Math.max(0,+root.querySelector('#af-maxrun').value||0),
       pattern:root.querySelector('#af-pat').value.toUpperCase().replace(/[^DESNF]/g,'')
     };
     const mode=root.querySelector('input[name="af-mode"]:checked').value;
-    S.afCfg={mode,nAfterOff:opts.nAfterOff,noDafterNOFF:false,maxRun:opts.maxRun,pattern:opts.pattern,v3:true,v5:true};
+    S.afCfg={mode,nAfterOff:opts.nAfterOff,noED:opts.noED,noDafterNOFF:false,maxRun:opts.maxRun,pattern:opts.pattern,v3:true,v5:true};
     genResult=mode==='cycle'?cyclicFill(opts):autoFill(opts);
     /* 개수 최우선: 순환으로 D·E·N·OFF 개수가 하나라도 안 맞으면 자동(패턴 우선) 방식으로 재편성 */
     if(mode==='cycle'&&!genResult.error&&(Object.keys(genResult.shortage||{}).length||genResult.offBad)){
@@ -934,7 +987,7 @@ function exportXls(){
   h+=`<tr><td></td><td></td><td colspan="${nd}" style="font-size:14pt;font-weight:bold;text-align:center">${y}년 ${m}월 근무표 (${esc(unit.name)})</td></tr>`;
   h+=`<tr>${td('성명','background:#333;color:#fff;font-weight:bold')}${td('구분','background:#333;color:#fff;font-weight:bold')}`;
   for(let d=1;d<=nd;d++){const w=new Date(y,m-1,d).getDay();h+=td(WD[w]+'<br>'+d,'background:#333;color:'+(w===0?'#ff8787':w===6?'#8fbaff':'#fff')+';font-weight:bold');}
-  for(const c of ['D','E','S','N'])h+=td(c,'background:#333;color:#fff;font-weight:bold');
+  for(const c of ORD())h+=td(c,'background:#333;color:#fff;font-weight:bold');
   h+=td('OFF계','background:#333;color:#fff;font-weight:bold')+td('연차계','background:#333;color:#fff;font-weight:bold')+td('근무계','background:#333;color:#fff;font-weight:bold')+'</tr>';
   for(const p of people){
     const c={D:0,E:0,S:0,N:0,OFF:0,V:0};
@@ -944,7 +997,7 @@ function exportXls(){
       if(v)c[v]++;
       row+=td(v==='V'?'연차':(v||''),v?('background:'+COLORS[v]):'');
     }
-    h+=`<tr>${td(esc(p.name),'font-weight:bold')}${td(p.fix?('고정('+p.fix+')'):'교대(D/E/S/N)')}${row}${td(c.D)}${td(c.E)}${td(c.S)}${td(c.N)}${td(c.OFF)}${td(c.V)}${td(c.D+c.E+c.S+c.N)}</tr>`;
+    h+=`<tr>${td(esc(p.name),'font-weight:bold')}${td(p.fix?('고정('+p.fix+')'):'교대')}${row}${ORD().map(x=>td(c[x])).join('')}${td(c.OFF)}${td(c.V)}${td(c.D+c.E+c.S+c.N)}</tr>`;
   }
   h+=`<tr>${td('')}${td('근무인원','font-weight:bold')}`;
   for(let d=1;d<=nd;d++){
@@ -953,7 +1006,7 @@ function exportXls(){
     h+=td(c);
   }
   h+=`</tr>`;
-  for(const code of ['D','E','S','N','OFF','V']){
+  for(const code of [...ORD(),'OFF','V']){
     h+=`<tr>${td('')}${td((code==='V'?'연차':code)+' 합계','font-weight:bold')}`;
     for(let d=1;d<=nd;d++){
       let c=0;
@@ -1103,8 +1156,9 @@ function renderCalc(){
   <div class="unitcards">`;
   for(const u of S.units){
     const n=unitStaff(u.id).length||0;
-    html+=`<div><h3>${esc(u.name)} — ${n}명 / 하루 D${u.need.D||0}·E${u.need.E||0}·N${u.need.N||0} (S는 남는 인력)</h3>
-    <div style="overflow:auto"><table class="calc"><tr><th>월</th><th>일수</th><th>합계</th><th>OFF</th><th>D</th><th>E</th><th>N</th><th>계</th><th>S·연차 여유</th></tr>`;
+    const ordDEN=ORD().filter(c=>c!=='S');
+    html+=`<div><h3>${esc(u.name)} — ${n}명 / 하루 ${ordDEN.map(c=>c+(u.need[c]||0)).join('·')} (S는 남는 인력)</h3>
+    <div style="overflow:auto"><table class="calc"><tr><th>월</th><th>일수</th><th>합계</th><th>OFF</th>${ordDEN.map(c=>`<th>${c}</th>`).join('')}<th>계</th><th>S·연차 여유</th></tr>`;
     for(let m=1;m<=12;m++){
       const nd=daysIn(+yr,m);
       const total=n*nd;
@@ -1113,7 +1167,7 @@ function renderCalc(){
       for(const c of ['D','E','N']){need[c]=(u.need[c]||0)*nd;needSum+=need[c];}
       const used=off+needSum;
       const slack=total-used;
-      html+=`<tr><td>${m}월</td><td>${nd}</td><td>${total}</td><td>${off}</td><td>${need.D}</td><td>${need.E}</td><td>${need.N}</td><td>${used}</td><td class="${slack<0?'neg':''}"><b>${slack}</b></td></tr>`;
+      html+=`<tr><td>${m}월</td><td>${nd}</td><td>${total}</td><td>${off}</td>${ordDEN.map(c=>`<td>${need[c]}</td>`).join('')}<td>${used}</td><td class="${slack<0?'neg':''}"><b>${slack}</b></td></tr>`;
     }
     html+=`</table></div></div>`;
   }
@@ -1168,7 +1222,7 @@ function renderPay(){
   <p class="hint" style="margin-top:8px">기본급 = 근무시간 × 시급. 야간가산 = 야간(N) 횟수 × 가산시간 × 시급 (기본 4시간 = 8시간의 0.5배). 휴일가산 = 월 ${holiHours.toFixed(1)}시간 × 시급 (휴일계산 탭의 연간 휴일수당 ÷ 12개월, 엑셀과 같은 공식). 참고용 계산이며 주휴수당·4대보험·세금은 반영하지 않습니다.</p></div>`;
 
   let gTotal=0;
-  html+=`<div class="card"><div style="overflow:auto"><table class="calc"><tr><th>유닛</th><th>이름</th><th>D</th><th>E</th><th>S</th><th>N</th><th>근무시간</th><th>시급</th><th>기본급</th><th>야간가산</th><th>휴일가산</th><th>합계</th></tr>`;
+  html+=`<div class="card"><div style="overflow:auto"><table class="calc"><tr><th>유닛</th><th>이름</th>${ORD().map(c=>`<th>${c}</th>`).join('')}<th>근무시간</th><th>시급</th><th>기본급</th><th>야간가산</th><th>휴일가산</th><th>합계</th></tr>`;
   for(const u of S.units){
     for(const p of unitStaff(u.id)){
       const c={D:0,E:0,S:0,N:0};
@@ -1181,7 +1235,7 @@ function renderPay(){
       const total=base+night+holi;
       gTotal+=total;
       html+=`<tr><td>${esc(u.name)}</td><td class="lbl">${esc(p.name)}</td>
-        <td>${c.D}</td><td>${c.E}</td><td>${c.S}</td><td>${c.N}</td><td>${hours}</td>
+        ${ORD().map(x=>`<td>${c[x]}</td>`).join('')}<td>${hours}</td>
         <td><input type="number" min="0" step="10" value="${wage||''}" placeholder="시급" data-wage="${p.id}" style="width:80px"></td>
         <td>${wage?won(base):'-'}</td><td>${wage?won(night):'-'}</td><td>${wage?won(holi):'-'}</td><td><b>${wage?won(total):'-'}</b></td></tr>`;
     }
@@ -1205,11 +1259,11 @@ function renderPay(){
 function renderSettings(){
   const root=document.getElementById('tab-settings');
   let html=`<div class="card"><h2>유닛과 하루 필요인원</h2>
-  <div style="overflow:auto"><table class="set"><tr><th>유닛명</th><th>D</th><th>E</th><th>N</th><th>인원</th><th></th></tr>`;
+  <div style="overflow:auto"><table class="set"><tr><th>유닛명</th>${ORD().filter(c=>c!=='S').map(c=>`<th>${c}</th>`).join('')}<th>인원</th><th></th></tr>`;
   for(const u of S.units){
     html+=`<tr>
       <td><input type="text" value="${esc(u.name)}" data-u="${u.id}" data-k="name"></td>
-      ${['D','E','N'].map(c=>`<td><input type="number" min="0" max="20" value="${u.need[c]||0}" data-u="${u.id}" data-k="${c}"></td>`).join('')}
+      ${ORD().filter(c=>c!=='S').map(c=>`<td><input type="number" min="0" max="20" value="${u.need[c]||0}" data-u="${u.id}" data-k="${c}"></td>`).join('')}
       <td>${unitStaff(u.id).length}명</td>
       <td><button class="btn danger" data-del-u="${u.id}">삭제</button></td></tr>`;
   }
@@ -1223,7 +1277,7 @@ function renderSettings(){
     html+=ppl.map(p=>`<span class="chip"><span data-rename="${p.id}" title="이름 바꾸기" style="cursor:pointer">${esc(p.name)}</span>
       <select data-fix="${p.id}" title="고정 근무" style="border:0;background:none;font-size:12px;color:var(--sub);padding:0">
         <option value="">교대</option>
-        ${['D','E','S','N'].map(c=>`<option value="${c}" ${p.fix===c?'selected':''}>${c} 고정</option>`).join('')}
+        ${ORD().map(c=>`<option value="${c}" ${p.fix===c?'selected':''}>${c} 고정</option>`).join('')}
       </select>
       <button data-del-p="${p.id}" title="삭제">×</button></span>`).join('');
     html+=`</div><div class="row" style="margin-top:8px">
@@ -1237,8 +1291,12 @@ function renderSettings(){
   html+=`</div>`;
 
   html+=`<div class="card"><h2>근무유형</h2>
+  <div class="row" style="margin-bottom:10px">
+    <label>표시 순서 <input type="text" id="orderCfg" value="${ORD().join(' ')}" style="width:110px"></label>
+    <span class="hint">D E S N 네 글자를 원하는 순서로 (예: E S D N) — 표·입력칸·엑셀 전부 이 순서로 나옵니다</span>
+  </div>
   <div style="overflow:auto"><table class="set"><tr><th>코드</th><th>이름</th><th>근무시간</th></tr>`;
-  for(const c of SHIFT_CODES){
+  for(const c of [...ORD(),'OFF','V']){
     const sh=S.shifts[c];
     html+=`<tr><td><b>${c==='V'?'연차':c}</b></td>
       <td><input type="text" value="${esc(sh.label)}" data-sh="${c}" data-k="label"></td>
@@ -1330,6 +1388,11 @@ function renderSettings(){
       save();renderSettings();
     };
   });
+  root.querySelector('#orderCfg').onchange=e=>{
+    const o=e.target.value.toUpperCase().replace(/[^DESN]/g,'').split('');
+    if(o.length===4&&new Set(o).size===4){S.shiftOrder=o;save();renderSettings();}
+    else{alert('D, E, S, N 네 글자를 한 번씩만 써주세요. 예: E S D N');renderSettings();}
+  };
   root.querySelectorAll('input[data-sh]').forEach(inp=>{
     inp.onchange=()=>{
       const sh=S.shifts[inp.dataset.sh];
