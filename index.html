@@ -172,7 +172,7 @@ const DEFAULTS={
   roster:{},
   shiftOrder:['E','S','D','N'], // 근무 표시 순서
   payCfg:{nightH:4}, // 야간 1회당 가산 환산시간 (8시간×0.5배 기준)
-  afCfg:{mode:'cycle',nAfterOff:true,noDafterNOFF:false,noED:true,maxRun:4,pattern:'ESDNFF',v3:true,v5:true}, // 편성 방식·규칙 (저장됨)
+  afCfg:{mode:'cycle',nAfterOff:true,noDafterNOFF:true,noED:true,maxRun:4,pattern:'ESDNFF',v3:true,v5:true,v7:true}, // 편성 방식·규칙 (저장됨)
   ui:{ym:'2026-07',unitId:'u1',calcYear:'2026'}
 };
 /* 대한민국 법정공휴일+대체공휴일 (근로자의날·제헌절 제외 — 기존 엑셀 집계 기준과 동일)
@@ -210,6 +210,7 @@ function load(){
     if(!d.afCfg.mode){d.afCfg.mode='cycle';if(d.afCfg.pattern==='ESDNF')d.afCfg.pattern='ESDNFF';} // 순환 편성 기본 (2026-07 기준표 요청)
     if(!d.afCfg.v5){d.afCfg.noDafterNOFF=false;d.afCfg.v5=true;} // N→OFF→D 금지 규칙 삭제 (2026-07 사용자 요청)
     if(d.afCfg.noED===undefined)d.afCfg.noED=true; // E 다음날 D 금지 (2026-07 사용자 요청)
+    if(!d.afCfg.v7){d.afCfg.noDafterNOFF=true;d.afCfg.v7=true;} // N,OFF 다음 D 금지 재도입 (2026-07 사용자 요청)
     if(!d.shiftOrder)d.shiftOrder=['E','S','D','N']; // 표시 순서
     return d;
   }catch(e){ return structuredClone(DEFAULTS); }
@@ -391,6 +392,10 @@ function autoFill(opts){
         };
         const totalW=p=>counts[p.id].D+counts[p.id].E+counts[p.id].S+counts[p.id].N;
         if(code==='N'){
+          /* 내일 쉴 몫이 없는 사람에게 N을 주면 OFF가 목표를 초과함 — 가능하면 제외 */
+          const np=pool.filter(p=>restLeft[p.id]-presetLeft(p)>0);
+          const poolN=np.length?np:pool.slice();
+          pool.length=0;pool.push(...poolN);
           /* N은 골고루: 그제도 N이던 사람(N OFF N 반복)은 후순위, N 횟수 적은 사람 우선 */
           pool.sort((a,b)=>affordN(a)-affordN(b)
             ||spare(a)-spare(b)
@@ -433,6 +438,7 @@ function autoFill(opts){
       if(v==='OFF'){orun++;if(orun>2)return false;}else orun=0; // OFF는 이어서 2개까지만
       if(opts.nAfterOff&&gv(p,dd-1)==='N'&&isW(v))return false;
       if(opts.noED&&gv(p,dd-1)==='E'&&v==='D')return false; // E 다음날 D 금지
+      if(opts.noDafterNOFF&&v==='D'&&(gv(p,dd-1)==='OFF'||gv(p,dd-1)==='V')&&gv(p,dd-2)==='N')return false; // N,OFF 다음 D 금지
     }
     return true;
   };
@@ -448,7 +454,31 @@ function autoFill(opts){
         grid[p.id][dd]='S';
         if(okPerson(p)){done=true;extraS++;}else grid[p.id][dd]='OFF';
       }
-      if(!done)break;
+      if(!done){
+        /* 직접 전환이 다 막히면: 초과 OFF를 다른 사람에게 넘기고 그 사람이 근무로 바꿈 */
+        outer2:
+        for(let dd=1;dd<=nd&&!done;dd++){
+          if(grid[p.id][dd]!=='OFF'||preset[p.id].has(dd))continue;
+          for(const q of people){
+            if(q===p)continue;
+            const qc=grid[q.id][dd];
+            if(!isW(qc)||preset[q.id].has(dd))continue;
+            if(p.fix&&p.fix!==qc)continue;
+            grid[p.id][dd]=qc;grid[q.id][dd]='OFF';
+            if(okPerson(p)&&okPerson(q)){
+              for(let d3=1;d3<=nd;d3++){
+                if(grid[q.id][d3]!=='OFF'||preset[q.id].has(d3)||d3===dd)continue;
+                grid[q.id][d3]='S';
+                if(okPerson(q)){done=true;extraS++;break;}
+                grid[q.id][d3]='OFF';
+              }
+            }
+            if(done)break outer2;
+            grid[p.id][dd]='OFF';grid[q.id][dd]=qc;
+          }
+        }
+      }
+      if(!done){notes.push(`${p.name}: OFF ${offC()}개 (목표 ${opts.off}개) — 규칙 안에서 못 줄였습니다`);break;}
     }
     /* 연속 초과: p가 그날 쉬고, 그날 쉬던 q가 대신 근무 + 반대날 맞교환 */
     for(let dd=1;dd<=nd;dd++){
@@ -560,6 +590,7 @@ function cyclicFill(opts){
     if(opts.nAfterOff&&code==='N'&&d<nd&&isWorkCode(val(p,d+1)))return false; // N이 되면 다음날 쉬어야
     if(opts.noED&&code==='D'&&val(p,d-1)==='E')return false; // E 다음날 D 금지
     if(opts.noED&&code==='E'&&d<nd&&val(p,d+1)==='D')return false; // 내일이 D인 사람에게 E 금지
+    if(opts.noDafterNOFF&&code==='D'&&(val(p,d-1)==='OFF'||val(p,d-1)==='V')&&val(p,d-2)==='N')return false; // N,OFF 다음 D 금지
     return true;
   };
   for(let d=1;d<=nd;d++){
@@ -716,6 +747,7 @@ function renderRoster(){
       <b style="font-size:13px">편성 규칙</b>
       <label><input type="checkbox" id="af-nafteroff" ${S.afCfg.nAfterOff?'checked':''}> N &rarr; OFF</label>
       <label><input type="checkbox" id="af-noed" ${S.afCfg.noED?'checked':''}> E 다음날 D 금지</label>
+      <label><input type="checkbox" id="af-nod" ${S.afCfg.noDafterNOFF?'checked':''}> N, OFF 다음 D 금지</label>
       <label>연속 근무 최대 <input type="number" id="af-maxrun" min="0" max="10" value="${S.afCfg.maxRun??4}" style="width:52px">일 <span class="hint">(4 또는 5 권장, 0 = 제한 없음)</span></label>
       <span style="font-size:13px">OFF 연속 최대 2일</span>
       <label>패턴 <select id="af-pat">
@@ -788,6 +820,10 @@ function renderRoster(){
       if(S.afCfg.noED&&prev==='E'&&v==='D'){
         nw='nwarn';
         warns.push(`${p.name}: ${d}일 — E 다음날 D 금지`);
+      }
+      if(S.afCfg.noDafterNOFF&&v==='D'&&(prev==='OFF'||prev==='V')&&prev2==='N'){
+        nw='nwarn';
+        warns.push(`${p.name}: ${d}일 — N, OFF 다음 D 금지`);
       }
       run=isWork(v)?run+1:0;
       if(maxRun>0&&run>maxRun){
@@ -924,12 +960,12 @@ function bindRosterTop(){
       off:+root.querySelector('#af-off').value||0,
       nAfterOff:root.querySelector('#af-nafteroff').checked,
       noED:root.querySelector('#af-noed').checked,
-      noDafterNOFF:false, // 규칙 삭제됨 (2026-07 사용자 요청)
+      noDafterNOFF:root.querySelector('#af-nod').checked, // N,OFF 다음 D 금지 (2026-07 재도입)
       maxRun:Math.max(0,+root.querySelector('#af-maxrun').value||0),
       pattern:root.querySelector('#af-pat').value.toUpperCase().replace(/[^DESNF]/g,'')
     };
     const mode=root.querySelector('input[name="af-mode"]:checked').value;
-    S.afCfg={mode,nAfterOff:opts.nAfterOff,noED:opts.noED,noDafterNOFF:false,maxRun:opts.maxRun,pattern:opts.pattern,v3:true,v5:true};
+    S.afCfg={mode,nAfterOff:opts.nAfterOff,noED:opts.noED,noDafterNOFF:opts.noDafterNOFF,maxRun:opts.maxRun,pattern:opts.pattern,v3:true,v5:true,v7:true};
     genResult=mode==='cycle'?cyclicFill(opts):autoFill(opts);
     /* 개수 최우선: 순환으로 D·E·N·OFF 개수가 하나라도 안 맞으면 자동(패턴 우선) 방식으로 재편성 */
     if(mode==='cycle'&&!genResult.error&&(Object.keys(genResult.shortage||{}).length||genResult.offBad)){
