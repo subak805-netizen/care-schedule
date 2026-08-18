@@ -566,29 +566,101 @@ function autoFill(opts){
     }
     if(!okPerson(p))notes.push(`${p.name}: 규칙(연속 근무·OFF 연속)을 다 못 맞춘 부분이 있습니다 — 손으로 조정해 주세요`);
   }
-  /* N 개수 균형: 최대-최소 격차가 1 이하가 될 때까지 같은 날 근무끼리 N을 맞바꿈 (개수·OFF·연속 불변) */
-  if(opts.nCap){
-    const nC=p=>{let c=0;for(let dd=1;dd<=nd;dd++)if(grid[p.id][dd]==='N')c++;return c;};
-    let guard=0;
-    while(guard++<80){
-      const flex=people.filter(p=>!p.fix);
-      if(!flex.length)break;
-      const over=flex.slice().sort((a,b)=>nC(b)-nC(a))[0];
-      const unders=flex.slice().sort((a,b)=>nC(a)-nC(b));
-      if(nC(over)-nC(unders[0])<=1)break;
-      let swapped=false;
-      for(let dd=1;dd<=nd&&!swapped;dd++){
-        if(grid[over.id][dd]!=='N'||preset[over.id].has(dd))continue;
-        for(const u of unders){
-          if(u===over||nC(over)-nC(u)<=1)break;
-          const uc=grid[u.id][dd];
-          if(!isW(uc)||uc==='N'||preset[u.id].has(dd)||preset[u.id].has(dd+1))continue;
-          grid[over.id][dd]=uc;grid[u.id][dd]='N';
-          if(okPerson(over)&&okPerson(u)){swapped=true;break;}
-          grid[over.id][dd]='N';grid[u.id][dd]=uc;
+  /* 근무 개수 균형(N→D→E→S 순): 최대-최소 격차 1 이하가 될 때까지 같은 날 근무끼리 맞바꿈 (일별 인원·OFF·연속 불변) */
+  {
+    const cnt=(p,c)=>{let k=0;for(let dd=1;dd<=nd;dd++)if(grid[p.id][dd]===c)k++;return k;};
+    const flex=people.filter(p=>!p.fix);
+    /* N 균형(3일 묶음): over의 [N,OFF](dd,dd+1) ↔ under의 [X,Y] + 다른 날 over의 근무 W ↔ under의 OFF
+       → 두 사람 OFF 개수·일별 인원 그대로, N만 이동 */
+    if(opts.nCap){
+      let guard=0;
+      while(flex.length&&guard++<80){
+        const over=flex.slice().sort((a,b)=>cnt(b,'N')-cnt(a,'N'))[0];
+        const unders=flex.slice().sort((a,b)=>cnt(a,'N')-cnt(b,'N'));
+        if(cnt(over,'N')-cnt(unders[0],'N')<=1)break;
+        let swapped=false;
+        for(let dd=1;dd<nd&&!swapped;dd++){
+          if(grid[over.id][dd]!=='N'||grid[over.id][dd+1]!=='OFF'||preset[over.id].has(dd)||preset[over.id].has(dd+1))continue;
+          for(const u of unders){
+            if(u===over||cnt(over,'N')-cnt(u,'N')<=1)break;
+            const X=grid[u.id][dd],Y=grid[u.id][dd+1];
+            if(!isW(X)||!isW(Y)||X==='N'||Y==='N'||preset[u.id].has(dd)||preset[u.id].has(dd+1))continue;
+            for(let d3=1;d3<=nd&&!swapped;d3++){
+              if(d3===dd||d3===dd+1)continue;
+              const W=grid[over.id][d3];
+              if(!isW(W)||W==='N'||grid[u.id][d3]!=='OFF'||preset[over.id].has(d3)||preset[u.id].has(d3))continue;
+              grid[over.id][dd]=X;grid[over.id][dd+1]=Y;grid[over.id][d3]='OFF';
+              grid[u.id][dd]='N';grid[u.id][dd+1]='OFF';grid[u.id][d3]=W;
+              if(okPerson(over)&&okPerson(u)){swapped=true;break;}
+              grid[over.id][dd]='N';grid[over.id][dd+1]='OFF';grid[over.id][d3]=W;
+              grid[u.id][dd]=X;grid[u.id][dd+1]=Y;grid[u.id][d3]='OFF';
+            }
+            if(swapped)break;
+          }
+        }
+        if(!swapped)break;
+      }
+    }
+    /* D·E·S(·N) 전체 불균형 = 각 근무의 (최대-최소) 합. 같은 날 두 사람 근무 맞바꿈/3자 순환 중
+       불균형을 줄이는 것만 채택 → 일별 인원·OFF·연속 불변, 규칙(okPerson) 통과한 것만 */
+    const codes=opts.nCap?['N','D','E','S']:['D','E','S'];
+    const tally=()=>{const t={};for(const p of flex){t[p.id]={D:0,E:0,S:0,N:0};for(let dd=1;dd<=nd;dd++){const v=grid[p.id][dd];if(t[p.id][v]!==undefined)t[p.id][v]++;}}return t;};
+    const imbalance=t=>{let s=0;for(const c of codes){let mn=1e9,mx=-1;for(const p of flex){mn=Math.min(mn,t[p.id][c]);mx=Math.max(mx,t[p.id][c]);}s+=mx-mn;}return s;};
+    let cur=imbalance(tally()), guard=0;
+    while(cur>codes.length&&guard++<400){ // 각 근무 격차 1 이하면 종료
+      let improved=false;
+      const t=tally();
+      // 가장 격차 큰 근무의 최다/최소 보유자를 우선 후보로
+      const worst=codes.slice().sort((a,b)=>{const sp=c=>{let mn=1e9,mx=-1;for(const p of flex){mn=Math.min(mn,t[p.id][c]);mx=Math.max(mx,t[p.id][c]);}return mx-mn;};return sp(b)-sp(a);})[0];
+      const overs=flex.slice().sort((a,b)=>t[b.id][worst]-t[a.id][worst]);
+      const unders=flex.slice().sort((a,b)=>t[a.id][worst]-t[b.id][worst]);
+      const noPre=(p,dd)=>!preset[p.id].has(dd);
+      const tryCommit=(ps)=>{ // 규칙 통과 + 불균형 감소면 채택
+        if(ps.every(okPerson)){const nv=imbalance(tally());if(nv<cur){cur=nv;return true;}}
+        return false;
+      };
+      outer:
+      for(const over of overs)for(const u of unders){
+        if(u===over)continue;
+        for(let dd=1;dd<=nd;dd++){
+          const oc=grid[over.id][dd],uc=grid[u.id][dd];
+          if(oc!==worst||!noPre(over,dd)||!noPre(u,dd))continue;
+          /* ① 같은 날 1:1 */
+          if(isW(uc)&&uc!==oc&&!(oc==='N'&&preset[u.id].has(dd+1))&&!(uc==='N'&&preset[over.id].has(dd+1))){
+            grid[over.id][dd]=uc;grid[u.id][dd]=oc;
+            if(tryCommit([over,u])){improved=true;break outer;}
+            grid[over.id][dd]=oc;grid[u.id][dd]=uc;
+          }
+          /* ② dd를 포함하는 날짜 블록(2~4일, 시작점 dd-2~dd) 통째 교환 — 인접 규칙(E뒤D 등)이 블록 안에서 그대로 유지됨, OFF 개수 불변일 때만 */
+          for(const L of [2,3,4])for(let s0=dd-L+1;s0<=dd;s0++){
+            if(s0<1||s0+L-1>nd)continue;
+            let ok=true;const ov=[],uv=[];
+            for(let k=0;k<L;k++){
+              const a=grid[over.id][s0+k],b=grid[u.id][s0+k];
+              if(!noPre(over,s0+k)||!noPre(u,s0+k)||!a||!b||a==='V'||b==='V'){ok=false;break;}
+              ov.push(a);uv.push(b);
+            }
+            if(!ok)continue;
+            const offEq=ov.filter(v=>v==='OFF').length===uv.filter(v=>v==='OFF').length;
+            if(!offEq||ov.join()===uv.join())continue;
+            for(let k=0;k<L;k++){grid[over.id][s0+k]=uv[k];grid[u.id][s0+k]=ov[k];}
+            if(tryCommit([over,u])){improved=true;break outer;}
+            for(let k=0;k<L;k++){grid[over.id][s0+k]=ov[k];grid[u.id][s0+k]=uv[k];}
+          }
+          /* ③ 3자 순환 (같은 날) */
+          if(isW(uc)&&uc!==oc)for(const m of flex){
+            if(m===over||m===u||!noPre(m,dd))continue;
+            const mc=grid[m.id][dd];
+            if(!isW(mc)||mc===oc||mc===uc)continue;
+            if(mc==='N'&&preset[over.id].has(dd+1))continue;
+            if(uc==='N'&&preset[m.id].has(dd+1))continue;
+            grid[over.id][dd]=mc;grid[m.id][dd]=uc;grid[u.id][dd]=oc;
+            if(tryCommit([over,m,u])){improved=true;break outer;}
+            grid[over.id][dd]=oc;grid[m.id][dd]=mc;grid[u.id][dd]=uc;
+          }
         }
       }
-      if(!swapped)break;
+      if(!improved)break;
     }
   }
   /* 결과 반영 (경계용 0·-1일 제외, 1~말일만 저장) */
@@ -756,26 +828,73 @@ function cyclicFill(opts){
       grid[p.id][cand]='S';extraS++;excess--;
     }
   }
-  /* N 개수 균형: 같은 날 근무끼리 N을 맞바꿈 (개수·OFF·연속 불변) */
-  if(opts.nCap){
-    const nC=p=>{let c=0;for(let dd=1;dd<=nd;dd++)if(grid[p.id][dd]==='N')c++;return c;};
-    let guard=0;
-    while(guard++<60){
-      const over=people.filter(p=>!p.fix&&nC(p)>opts.nCap).sort((a,b)=>nC(b)-nC(a))[0];
-      if(!over)break;
-      const under=people.filter(p=>!p.fix&&nC(p)<opts.nCap).sort((a,b)=>nC(a)-nC(b));
-      if(!under.length)break;
-      let swapped=false;
-      for(let dd=1;dd<=nd&&!swapped;dd++){
-        if(grid[over.id][dd]!=='N'||preset[over.id].has(dd))continue;
-        for(const u of under){
-          const uc=grid[u.id][dd];
-          if(!isWorkCode(uc)||uc==='N'||preset[u.id].has(dd))continue;
-          if(!canSwitch(u,dd,'N')||!canSwitch(over,dd,uc))continue;
-          grid[over.id][dd]=uc;grid[u.id][dd]='N';swapped=true;break;
+  /* 근무 개수 균형(N→D→E→S 순): 같은 날 근무끼리 맞바꿈 (일별 인원·OFF·연속 불변) */
+  {
+    const cnt=(p,c)=>{let k=0;for(let dd=1;dd<=nd;dd++)if(grid[p.id][dd]===c)k++;return k;};
+    const flex=people.filter(p=>!p.fix);
+    /* 전체 불균형(각 근무의 최대-최소 합)을 줄이는 같은 날 맞바꿈/3자 순환만 채택 */
+    const codes=opts.nCap?['N','D','E','S']:['D','E','S'];
+    const tally=()=>{const t={};for(const p of flex){t[p.id]={D:0,E:0,S:0,N:0};for(let dd=1;dd<=nd;dd++){const v=grid[p.id][dd];if(t[p.id][v]!==undefined)t[p.id][v]++;}}return t;};
+    const imbalance=t=>{let s=0;for(const c of codes){let mn=1e9,mx=-1;for(const p of flex){mn=Math.min(mn,t[p.id][c]);mx=Math.max(mx,t[p.id][c]);}s+=mx-mn;}return s;};
+    let cur=imbalance(tally()), guard=0;
+    while(flex.length&&cur>codes.length&&guard++<400){
+      let improved=false;
+      const t=tally();
+      const worst=codes.slice().sort((a,b)=>{const sp=c=>{let mn=1e9,mx=-1;for(const p of flex){mn=Math.min(mn,t[p.id][c]);mx=Math.max(mx,t[p.id][c]);}return mx-mn;};return sp(b)-sp(a);})[0];
+      const overs=flex.slice().sort((a,b)=>t[b.id][worst]-t[a.id][worst]);
+      const unders=flex.slice().sort((a,b)=>t[a.id][worst]-t[b.id][worst]);
+      /* 규칙 검사(경계 포함): 한 사람 전체 */
+      const okAll=p=>{
+        for(let dd=1;dd<=nd;dd++){const v=grid[p.id][dd];if(!isWorkCode(v))continue;if(!canWork(p,dd,v,true))return false;}
+        let run=0;for(let k=0;k>-12;k--){if(isWorkCode(val(p,k)))run++;else break;}
+        let orun=0;for(let k=0;k>-12;k--){if(val(p,k)==='OFF')orun++;else break;}
+        for(let dd=1;dd<=nd;dd++){const v=grid[p.id][dd];
+          if(isWorkCode(v)){run++;if(opts.maxRun&&run>opts.maxRun)return false;}else run=0;
+          if(v==='OFF'){orun++;if(orun>2)return false;}else orun=0;}
+        return true;
+      };
+      outer:
+      for(const over of overs)for(const u of unders){
+        if(u===over)continue;
+        for(let dd=1;dd<=nd;dd++){
+          const oc=grid[over.id][dd],uc=grid[u.id][dd];
+          if(oc!==worst||preset[over.id].has(dd)||preset[u.id].has(dd))continue;
+          if(isWorkCode(uc)&&uc!==oc&&canSwitch(u,dd,oc)&&canSwitch(over,dd,uc)){
+            grid[over.id][dd]=uc;grid[u.id][dd]=oc;
+            const nv=imbalance(tally());
+            if(nv<cur){cur=nv;improved=true;break outer;}
+            grid[over.id][dd]=oc;grid[u.id][dd]=uc;
+          }
+          /* dd를 포함하는 날짜 블록(2~4일, 시작점 dd-2~dd) 통째 교환 (OFF 개수 불변일 때) */
+          for(const L of [2,3,4])for(let s0=dd-L+1;s0<=dd;s0++){
+            if(s0<1||s0+L-1>nd)continue;
+            let ok=true;const ov=[],uv=[];
+            for(let k=0;k<L;k++){
+              const a=grid[over.id][s0+k],b=grid[u.id][s0+k];
+              if(preset[over.id].has(s0+k)||preset[u.id].has(s0+k)||!a||!b||a==='V'||b==='V'){ok=false;break;}
+              ov.push(a);uv.push(b);
+            }
+            if(!ok)continue;
+            if(ov.filter(v=>v==='OFF').length!==uv.filter(v=>v==='OFF').length||ov.join()===uv.join())continue;
+            for(let k=0;k<L;k++){grid[over.id][s0+k]=uv[k];grid[u.id][s0+k]=ov[k];}
+            if(okAll(over)&&okAll(u)){const nv=imbalance(tally());if(nv<cur){cur=nv;improved=true;break outer;}}
+            for(let k=0;k<L;k++){grid[over.id][s0+k]=ov[k];grid[u.id][s0+k]=uv[k];}
+          }
+          if(!isWorkCode(uc)||uc===oc)continue;
+          for(const m of flex){
+            if(m===over||m===u||preset[m.id].has(dd))continue;
+            const mc=grid[m.id][dd];
+            if(!isWorkCode(mc)||mc===oc||mc===uc)continue;
+            if(canSwitch(over,dd,mc)&&canSwitch(m,dd,uc)&&canSwitch(u,dd,oc)){
+              grid[over.id][dd]=mc;grid[m.id][dd]=uc;grid[u.id][dd]=oc;
+              const nv=imbalance(tally());
+              if(nv<cur){cur=nv;improved=true;break outer;}
+              grid[over.id][dd]=oc;grid[m.id][dd]=mc;grid[u.id][dd]=uc;
+            }
+          }
         }
       }
-      if(!swapped)break;
+      if(!improved)break;
     }
   }
   /* 결과 저장 + 요약 */
