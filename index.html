@@ -196,7 +196,7 @@ const DEFAULTS={
   shiftOrder:['E','S','D','N'], // 근무 표시 순서
   customRules:[], // 사용자 정의 규칙 {id,type:'seq2'|'seq3'|'run',a,b,c,n,on}
   payCfg:{nightH:4}, // 야간 1회당 가산 환산시간 (8시간×0.5배 기준)
-  afCfg:{mode:'cycle',nAfterOff:true,noDafterNOFF:true,noED:true,maxRun:4,nCap:5,pattern:'ESDNFF',v3:true,v5:true,v7:true}, // 편성 방식·규칙 (저장됨)
+  afCfg:{mode:'cycle',nAfterOff:true,noDafterNOFF:true,noED:true,maxRun:4,nCap:5,pattern:'ESDNFF',v3:true,v5:true,v7:true,v8:true}, // 편성 방식·규칙 (저장됨)
   ui:{ym:'2026-07',unitId:'u1',calcYear:'2026'}
 };
 /* 대한민국 법정공휴일+대체공휴일 (근로자의날·제헌절 제외 — 기존 엑셀 집계 기준과 동일)
@@ -238,6 +238,7 @@ function load(){
     if(!d.shiftOrder)d.shiftOrder=['E','S','D','N']; // 표시 순서
     if(!d.customRules)d.customRules=[]; // 사용자 정의 규칙 (2026-07)
     if(d.afCfg.nCap===undefined)d.afCfg.nCap=5; // 1인당 N 기본 개수 (2026-07 사용자 요청)
+    if(!d.afCfg.v8)d.afCfg.v8=true; // v8: N-OFF-OFF 소프트 우선 배치 (2026-08 사용자 요청 — 하드 금지는 수학적 불가로 소프트 처리)
     return d;
   }catch(e){ return structuredClone(DEFAULTS); }
 }
@@ -661,6 +662,39 @@ function autoFill(opts){
         }
       }
       if(!improved)break;
+    }
+  }
+  /* N-OFF-근무 → N-OFF-OFF 수리: 두 사람이 서로 다른 두 날짜를 맞바꿈 (개인 OFF·일별 인원 불변, 규칙 통과만 채택) */
+  if(opts.nAfterOff){
+    let guard=0;
+    while(guard++<80){
+      let fixedOne=false;
+      scan:
+      for(const p of people){
+        for(let v=3;v<=nd;v++){
+          const X=grid[p.id][v];
+          if(!isW(X)||X==='N'||grid[p.id][v-1]!=='OFF'||grid[p.id][v-2]!=='N'||preset[p.id].has(v))continue;
+          /* p의 v일(근무 X)을 OFF로: q(그날 휴무)와 v일·t일 교차 교환 */
+          for(const q of people){
+            if(q===p||grid[q.id][v]!=='OFF'||preset[q.id].has(v))continue;
+            if(grid[q.id][v-1]==='OFF'&&grid[q.id][v-2]==='N')continue; // q의 그날 휴무가 N-OFF-OFF의 둘째 OFF면 뺏지 않음
+            if(q.fix&&q.fix!==X)continue;
+            for(let t=1;t<=nd;t++){
+              if(t===v||grid[p.id][t]!=='OFF'||preset[p.id].has(t))continue;
+              if(grid[p.id][t-1]==='OFF'&&grid[p.id][t-2]==='N')continue; // p의 t일 휴무도 N-OFF-OFF 둘째 OFF면 유지
+              const Y=grid[q.id][t];
+              if(!isW(Y)||Y==='N'||preset[q.id].has(t))continue;
+              if(p.fix&&p.fix!==Y)continue;
+              grid[p.id][v]='OFF';grid[q.id][v]=X;
+              grid[p.id][t]=Y;grid[q.id][t]='OFF';
+              if(okPerson(p)&&okPerson(q)){fixedOne=true;break scan;}
+              grid[p.id][v]=X;grid[q.id][v]='OFF';
+              grid[p.id][t]='OFF';grid[q.id][t]=Y;
+            }
+          }
+        }
+      }
+      if(!fixedOne)break;
     }
   }
   /* 결과 반영 (경계용 0·-1일 제외, 1~말일만 저장) */
