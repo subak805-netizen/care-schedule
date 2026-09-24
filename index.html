@@ -160,6 +160,16 @@ function ruleLabel(r){
   return `${crName(r.a)} 연속 최대 ${r.n}일`;
 }
 function activeRules(){return (S.customRules||[]).filter(r=>r.on!==false);}
+function parseAssign(str,nd){ // "5=D, 12-14=N" 또는 "5D 12N" → {day:code}
+  const out={};
+  for(const tok of String(str||'').split(/[,\s]+/)){
+    const m=tok.match(/^(\d+)(?:[-~](\d+))?=?([DESNdesn])$/);
+    if(!m)continue;
+    const a=+m[1],b=m[2]?+m[2]:+m[1],c=m[3].toUpperCase();
+    for(let d=a;d<=Math.min(b,nd);d++)if(d>=1)out[d]=c;
+  }
+  return out;
+}
 function parseDays(str,nd){ // "5, 12-14" → [5,12,13,14]
   const days=new Set();
   for(const tok of String(str||'').split(/[,\s]+/)){
@@ -206,8 +216,9 @@ const DEFAULTS={
   shiftOrder:['E','S','D','N'], // 근무 표시 순서
   customRules:[], // 사용자 정의 규칙 {id,type:'seq2'|'seq3'|'run',a,b,c,n,on}
   pinOff:{}, // 직원별 OFF 고정일 { 'YYYY-MM': { staffId: [day,...] } }
+  pinShift:{}, // 직원별 근무 사전 지정 { 'YYYY-MM': { staffId: {day:'D'|'E'|'S'|'N'} } }
   payCfg:{nightH:4}, // 야간 1회당 가산 환산시간 (8시간×0.5배 기준)
-  afCfg:{mode:'cycle',nAfterOff:true,noDafterNOFF:false,noED:true,maxRun:4,nCap:5,pattern:'ESDNFF',v3:true,v5:true,v7:true,v8:true,v9:true}, // 편성 방식·규칙 (저장됨)
+  afCfg:{mode:'cycle',nAfterOff:true,noDafterNOFF:false,noED:true,maxRun:4,nCap:5,pattern:'SDENFF',v3:true,v5:true,v7:true,v8:true,v9:true,v10:true}, // 편성 방식·규칙 (저장됨)
   ui:{ym:'2026-07',unitId:'u1',calcYear:'2026'}
 };
 /* 대한민국 법정공휴일+대체공휴일 (근로자의날·제헌절 제외 — 기존 엑셀 집계 기준과 동일)
@@ -252,6 +263,8 @@ function load(){
     if(!d.afCfg.v8)d.afCfg.v8=true; // v8: N-OFF-OFF 소프트 우선 배치 (2026-08 사용자 요청 — 하드 금지는 수학적 불가로 소프트 처리)
     if(!d.pinOff)d.pinOff={}; // OFF 고정일 (2026-08 사용자 요청)
     if(!d.afCfg.v9){d.afCfg.noDafterNOFF=false;d.afCfg.v9=true;} // OFF 다음은 무엇이든 허용 (2026-08 사용자 요청)
+    if(!d.afCfg.v10){if(d.afCfg.pattern==='ESDNFF')d.afCfg.pattern='SDENFF';d.afCfg.v10=true;} // 기준 문서 패턴 (2026-09)
+    if(!d.pinShift)d.pinShift={}; // 근무 사전 지정 (2026-09)
     return d;
   }catch(e){ return structuredClone(DEFAULTS); }
 }
@@ -312,10 +325,14 @@ function autoFill(opts){
     const cur=(S.roster[opts.ym]||{})[p.id]||{};
     preset[p.id]=new Set(Object.keys(cur).filter(d=>cur[d]==='V').map(Number));
   }
-  const pinned={},lock={}; // OFF 고정일 + 지정 연차 = 편성이 건드리면 안 되는 날
+  const pinned={},pinsh={},restRes={},lock={};
   for(const p of people){
-    pinned[p.id]=new Set((((S.pinOff||{})[opts.ym]||{})[p.id]||[]));
-    lock[p.id]=new Set([...preset[p.id],...pinned[p.id]]);
+    pinned[p.id]=new Set((((S.pinOff||{})[opts.ym]||{})[p.id]||[])); // OFF 고정일
+    restRes[p.id]=new Set([...preset[p.id],...pinned[p.id]]); // 반드시 쉬는 날 (연차+고정OFF)
+    const raw=(((S.pinShift||{})[opts.ym]||{})[p.id]||{}); // 근무 사전 지정
+    pinsh[p.id]=new Map();
+    for(const k in raw){const dd=+k;if(!restRes[p.id].has(dd))pinsh[p.id].set(dd,raw[k]);}
+    lock[p.id]=new Set([...restRes[p.id],...pinsh[p.id].keys()]); // 편성이 못 건드리는 날 전체
   }
   const vacOf=p=>preset[p.id].size; // 연차는 입력한 날짜만 (자동배정 없음)
   const restOf=p=>opts.off+vacOf(p);
@@ -346,7 +363,7 @@ function autoFill(opts){
   const shortage={}; let extraS=0;
   const custom=opts.custom||[];
   const cBad=(p,d,code)=>custom.length&&crBad(custom,code,grid[p.id][d-1]||'',grid[p.id][d-2]||'',k=>grid[p.id][d-k]||'');
-  const presetLeft=p=>[...lock[p.id]].filter(x=>x>curDay).length; // 오늘 이후 남은 지정연차·고정OFF
+  const presetLeft=p=>[...restRes[p.id]].filter(x=>x>curDay).length; // 오늘 이후 남은 지정연차·고정OFF
   let curDay=0;
   /* 선호 패턴 (예: ESDNF = E→S→D→N→휴무 순환): 오늘 근무의 "패턴상 전날 근무"가 어제와 일치하는 사람 우선 */
   const predOf={};
@@ -365,7 +382,8 @@ function autoFill(opts){
     /* 쉬는 사람 고르기: ①지정 연차 ②야간(N) 다음날 강제 OFF ③남은 휴무를 남은 일수에 다 써야 하는 사람 ④휴무 비율 높은 순 */
     const resters=new Set();
     for(const p of people){
-      if(lock[p.id].has(d)){resters.add(p.id);continue;} // 지정 연차·OFF 고정일
+      if(restRes[p.id].has(d)){resters.add(p.id);continue;} // 지정 연차·OFF 고정일
+      if(pinsh[p.id].has(d))continue; // 근무 지정일 — 쉴 수 없음
       if(opts.nAfterOff&&nStreak[p.id]>=1){resters.add(p.id);continue;} // N 다음날 무조건 OFF
       if(restLeft[p.id]-presetLeft(p)<=0)continue;
       if(opts.maxRun){
@@ -383,6 +401,7 @@ function autoFill(opts){
     target=Math.min(target,Math.max(resters.size,n-baseNeed)); // 필요인원만큼은 반드시 근무에 남김
     const cands=people.filter(p=>{
         if(resters.has(p.id)||restLeft[p.id]-presetLeft(p)<=0)return false;
+        if(pinsh[p.id].has(d))return false; // 근무 지정일 — 쉴 수 없음
         if(oStreak[p.id]>=2)return false; // OFF는 이어서 2개까지만
         if(pinned[p.id].has(d+1)&&pinned[p.id].has(d+2))return false; // 오늘 쉬면 고정 OFF와 3연속
         if(oStreak[p.id]>=1&&pinned[p.id].has(d+1))return false;
@@ -407,6 +426,10 @@ function autoFill(opts){
     for(const p of workers){ // 고정 근무 직원
       if(!assigned[p.id]&&p.fix){assigned[p.id]=p.fix;slots[p.fix]--;}
     }
+    for(const p of workers){ // 근무 사전 지정 (연차처럼 D/E/S/N 미리 지정)
+      const pc=pinsh[p.id].get(d);
+      if(!assigned[p.id]&&pc){assigned[p.id]=pc;slots[pc]--;}
+    }
     /* 오늘 D를 못 서는 사람 모음 (전월 경계 포함) */
     const noD=new Set();
     for(const p of workers){
@@ -416,21 +439,24 @@ function autoFill(opts){
     }
     for(const code of ['N','S','E','D']){ // 같은 근무 횟수가 적은 사람부터
       while(slots[code]>0){
-        const pool=workers.filter(p=>!assigned[p.id]&&!(code==='D'&&noD.has(p.id))&&!cBad(p,d,code));
+        const pool=workers.filter(p=>!assigned[p.id]&&!(code==='D'&&noD.has(p.id))&&!(opts.noED&&code==='E'&&pinsh[p.id].get(d+1)==='D')&&!cBad(p,d,code));
         if(!pool.length){
           /* 남은 사람이 규칙 탓에 이 근무를 못 서면, 이미 배정된 사람과 역할 맞교환 */
           let fixed=false;
           outer:
           for(const w of workers){
             if(!assigned[w.id]||assigned[w.id]===code)continue;
+            if(pinsh[w.id].has(d))continue; // 근무 지정자는 바꾸지 않음
             if(code==='D'&&noD.has(w.id))continue;
-            if(code==='N'&&preset[w.id].has(d+1))continue; // N 다음날 연차 금지
+            if(code==='N'&&(preset[w.id].has(d+1)||pinsh[w.id].has(d+1)))continue; // N 다음날 연차·근무지정 금지
+            if(opts.noED&&code==='E'&&pinsh[w.id].get(d+1)==='D')continue; // 내일 D 지정자에게 E 금지
             if(cBad(w,d,code))continue;
             const wc=assigned[w.id];
             for(const q of workers){
               if(assigned[q.id]||q===w)continue;
               if(wc==='D'&&noD.has(q.id))continue;
-              if(wc==='N'&&preset[q.id].has(d+1))continue; // N 다음날 연차 금지
+              if(wc==='N'&&(preset[q.id].has(d+1)||pinsh[q.id].has(d+1)))continue; // N 다음날 연차·근무지정 금지
+              if(opts.noED&&wc==='E'&&pinsh[q.id].get(d+1)==='D')continue; // 내일 D 지정자에게 E 금지
               if(cBad(q,d,wc))continue;
               assigned[w.id]=code;assigned[q.id]=wc;fixed=true;break outer;
             }
@@ -449,7 +475,7 @@ function autoFill(opts){
         const totalW=p=>counts[p.id].D+counts[p.id].E+counts[p.id].S+counts[p.id].N;
         if(code==='N'){
           /* N 다음날은 무조건 OFF — 다음날이 지정 연차인 사람에게는 N 금지 */
-          const nv=pool.filter(p=>!preset[p.id].has(d+1));
+          const nv=pool.filter(p=>!preset[p.id].has(d+1)&&!pinsh[p.id].has(d+1));
           if(nv.length){pool.length=0;pool.push(...nv);}
           /* 내일 쉴 몫이 없는 사람에게 N을 주면 OFF가 목표를 초과함 — 가능하면 제외 */
           const np=pool.filter(p=>restLeft[p.id]-presetLeft(p)>0);
@@ -546,13 +572,13 @@ function autoFill(opts){
     /* 연속 초과: p가 그날 쉬고, 그날 쉬던 q가 대신 근무 + 반대날 맞교환 */
     for(let dd=1;dd<=nd;dd++){
       if(okPerson(p))break;
-      if(!isW(gv(p,dd)))continue;
+      if(!isW(gv(p,dd))||lock[p.id].has(dd))continue;
       let swapped=false;
       for(const q of people){
         if(q===p||gv(q,dd)!=='OFF'||lock[q.id].has(dd))continue;
         if(q.fix&&q.fix!==gv(p,dd))continue;
         for(let d2=Math.max(1,dd-7);d2<=Math.min(nd,dd+7)&&!swapped;d2++){
-          if(d2===dd||gv(p,d2)!=='OFF'||lock[p.id].has(d2)||!isW(gv(q,d2)))continue;
+          if(d2===dd||gv(p,d2)!=='OFF'||lock[p.id].has(d2)||!isW(gv(q,d2))||lock[q.id].has(d2))continue;
           if(p.fix&&p.fix!==gv(q,d2))continue;
           const a=gv(p,dd),b=gv(q,d2);
           grid[p.id][dd]='OFF';grid[q.id][dd]=a;
@@ -1039,8 +1065,7 @@ function renderRoster(){
       <span style="font-size:13px">OFF 연속 최대 2일</span>
       <span style="font-size:13px">N 다음날 연차 금지</span>
       <label class="pat-label">패턴 <select id="af-pat">
-        <option value="ESDNFF" ${S.afCfg.pattern!=='ESDNF'?'selected':''}>E S D N F F</option>
-        <option value="ESDNF" ${S.afCfg.pattern==='ESDNF'?'selected':''}>E S D N F</option>
+        ${[['SDENFF','S D E N F F'],['DSENFF','D S E N F F'],['ESDNFF','E S D N F F'],['ESDNF','E S D N F']].map(([v,l])=>`<option value="${v}" ${S.afCfg.pattern===v?'selected':''}>${l}</option>`).join('')}
       </select></label>
       <span class="hint">F = 휴무. 전월 마지막 날도 이어서 봅니다 (전월 말일이 N이면 1일은 OFF).</span>
     </div>
@@ -1087,6 +1112,16 @@ function renderRoster(){
       ${(unit?unitStaff(unit.id):[]).map(p=>{
         const odays=(((S.pinOff||{})[ym]||{})[p.id]||[]).join(', ');
         return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px">${esc(p.name)} <input type="text" data-odays="${p.id}" value="${odays}" placeholder="예: 3, 20-21" style="width:110px;padding:4px 6px"></label>`;
+      }).join('')}
+      </div>
+    </div>
+    <div style="margin-top:10px"><b style="font-size:13px">직원별 근무 지정</b>
+      <span class="hint">특정 날짜의 근무를 미리 정합니다. 쓰는 법: 5=D, 12=N (연속은 12-14=N). 그 날은 그 근무로 고정됩니다.</span>
+      <div class="row" style="margin-top:6px;gap:8px">
+      ${(unit?unitStaff(unit.id):[]).map(p=>{
+        const raw=(((S.pinShift||{})[ym]||{})[p.id]||{});
+        const sdays=Object.keys(raw).map(Number).sort((a,b)=>a-b).map(d=>d+'='+raw[d]).join(', ');
+        return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px">${esc(p.name)} <input type="text" data-sdays="${p.id}" value="${sdays}" placeholder="예: 5=D, 12=N" style="width:120px;padding:4px 6px"></label>`;
       }).join('')}
       </div>
     </div>
@@ -1166,8 +1201,8 @@ function renderRoster(){
         nw='nwarn';
         if(offRun===3)warns.push(`${p.name}: ${d}일 — OFF 3일 연속 (최대 2일)`);
       }
-      const isPin=v==='OFF'&&(((S.pinOff||{})[ym]||{})[p.id]||[]).includes(d);
-      html+=`<td class="cell ${v?'v-'+v:''} ${nw} ${isPin?'pinned':''}" data-p="${p.id}" data-d="${d}" ${isPin?'title="OFF 고정일"':''}>${v==='V'?'연':v}</td>`;
+      const isPin=(v==='OFF'&&(((S.pinOff||{})[ym]||{})[p.id]||[]).includes(d))||((((S.pinShift||{})[ym]||{})[p.id]||{})[d]===v);
+      html+=`<td class="cell ${v?'v-'+v:''} ${nw} ${isPin?'pinned':''}" data-p="${p.id}" data-d="${d}" ${isPin?'title="미리 지정한 날"':''}>${v==='V'?'연':v}</td>`;
     }
     const workDays=cnt.D+cnt.E+cnt.S+cnt.N;
     const offCls=offTarget===undefined?'':(cnt.OFF===offTarget?'good':'bad');
@@ -1290,6 +1325,18 @@ function bindRosterTop(){
     const people=unitStaff(S.ui.unitId);
     const hasData=cur&&people.some(p=>cur[p.id]&&Object.keys(cur[p.id]).length);
     if(hasData&&!confirm('이 유닛의 이번 달 배정을 새로 편성합니다. 지정한 연차일은 그대로 유지됩니다. 계속할까요?'))return;
+    /* 입력칸의 근무 지정 저장 */
+    if(!S.pinShift)S.pinShift={};
+    if(!S.pinShift[S.ui.ym])S.pinShift[S.ui.ym]={};
+    {
+      const[py2,pm2]=ymParts(S.ui.ym), pnd2=daysIn(py2,pm2);
+      for(const p of people){
+        const sinp=root.querySelector(`input[data-sdays="${p.id}"]`);
+        if(!sinp)continue;
+        const asg=parseAssign(sinp.value,pnd2);
+        if(Object.keys(asg).length)S.pinShift[S.ui.ym][p.id]=asg; else delete S.pinShift[S.ui.ym][p.id];
+      }
+    }
     /* 입력칸의 OFF 고정일 저장 */
     const[gy,gm]=ymParts(S.ui.ym), gnd=daysIn(gy,gm);
     if(!S.pinOff)S.pinOff={};
@@ -1324,11 +1371,11 @@ function bindRosterTop(){
     };
     const mode=root.querySelector('input[name="af-mode"]:checked').value;
     S.afCfg={mode,nAfterOff:opts.nAfterOff,noED:opts.noED,noDafterNOFF:opts.noDafterNOFF,maxRun:opts.maxRun,nCap:opts.nCap,pattern:opts.pattern,v3:true,v5:true,v7:true};
-    const hasPins=people.some(p=>((S.pinOff[S.ui.ym]||{})[p.id]||[]).length);
+    const hasPins=people.some(p=>((S.pinOff[S.ui.ym]||{})[p.id]||[]).length||Object.keys(((S.pinShift||{})[S.ui.ym]||{})[p.id]||{}).length);
     genResult=(mode==='cycle'&&!hasPins)?cyclicFill(opts):autoFill(opts);
     if(mode==='cycle'&&hasPins&&!genResult.error){
       genResult.notes=genResult.notes||[];
-      genResult.notes.unshift('OFF 고정일이 있어 개수 우선 방식으로 편성했습니다');
+      genResult.notes.unshift('OFF 고정일·근무 지정이 있어 개수 우선 방식으로 편성했습니다');
     }
     /* 개수 최우선: 순환으로 D·E·N·OFF 개수가 하나라도 안 맞으면 자동(패턴 우선) 방식으로 재편성 */
     if(mode==='cycle'&&!hasPins&&!genResult.error&&(Object.keys(genResult.shortage||{}).length||genResult.offBad||genResult.customViol)){
