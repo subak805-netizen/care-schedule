@@ -1101,7 +1101,7 @@ function renderRoster(){
       <span style="font-size:13px">OFF 연속 최대 2일</span>
       <span style="font-size:13px">N 다음날 연차 금지</span>
       <label class="pat-label">패턴 <select id="af-pat">
-        ${[['SDENFF','S D E N F F'],['SDENNFF','S D E N N F F'],['DSENFF','D S E N F F'],['ESDNFF','E S D N F F'],['ESDNF','E S D N F']].map(([v,l])=>`<option value="${v}" ${S.afCfg.pattern===v?'selected':''}>${l}</option>`).join('')}
+        ${[['SDENFF','S D E N F F'],['SDENNFF','S D E N N F F'],['DSENNFF','D S E N N F F'],['DSENFF','D S E N F F'],['ESDNFF','E S D N F F'],['ESDNF','E S D N F']].map(([v,l])=>`<option value="${v}" ${S.afCfg.pattern===v?'selected':''}>${l}</option>`).join('')}
       </select></label>
       <span class="hint">F = 휴무. 패턴에 N N이 있으면 N은 2일 연속까지 서고 그 다음 OFF. 전월 마지막 날도 이어서 봅니다.</span>
     </div>
