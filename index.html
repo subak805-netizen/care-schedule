@@ -30,6 +30,8 @@ nav button{border:0;background:none;padding:6px 16px;font-size:13.5px;font-weigh
 nav button:hover{color:var(--txt)}
 nav button.on{background:var(--card);color:var(--txt);box-shadow:var(--shadow-sm)}
 main{padding:20px 22px 60px;max-width:1520px;margin:0 auto}
+nav button,header h1{white-space:nowrap}
+@media (max-width:640px){header{height:auto;flex-wrap:wrap;padding:8px 14px;gap:8px 12px}nav button{padding:6px 10px}main{padding:14px 12px 60px}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:18px;box-shadow:var(--shadow)}
 .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .spacer{flex:1}
@@ -43,6 +45,7 @@ select,input[type=text],input[type=number]{border:1px solid var(--line-strong);b
 select:focus,input[type=text]:focus,input[type=number]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 input[type=number]{width:64px;text-align:center}
 :focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input::placeholder{color:#b8b8be}
 .month-nav{display:flex;align-items:center;gap:6px}
 .month-nav b{font-size:16px;min-width:120px;text-align:center;font-weight:700;letter-spacing:-.01em}
 .hint{color:var(--sub);font-size:12px;line-height:1.6}
@@ -115,6 +118,65 @@ table.set input[type=text]{width:110px}
 .chip{display:inline-flex;align-items:center;gap:6px;background:#f0f0f3;border-radius:18px;padding:5px 7px 5px 13px;font-size:13px;font-weight:600}
 .chip button{border:0;background:#d8d8de;border-radius:50%;width:18px;height:18px;line-height:16px;cursor:pointer;font-size:11px;color:var(--sub);transition:background .15s,color .15s}
 .chip button:hover{background:var(--warn);color:#fff}
+/* 규칙 탭 */
+.sc{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:22px;padding:0 6px;border-radius:6px;font-weight:800;font-size:12px}
+.sc-D{background:var(--c-D);color:var(--c-Dt)}.sc-E{background:var(--c-E);color:var(--c-Et)}.sc-S{background:var(--c-S);color:var(--c-St)}
+.sc-N{background:var(--c-N);color:var(--c-Nt)}.sc-OFF{background:var(--c-OFF);color:var(--c-OFFt)}.sc-V{background:var(--c-V);color:var(--c-Vt)}
+.sc-W{background:#eef0f4;color:var(--sub)}
+.sc-X{background:transparent;color:var(--warn);border:1.5px dashed var(--warn)}
+.lead{color:var(--sub);font-size:13px;margin:-6px 0 12px}
+.sec-title{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sec-title h2{margin-bottom:12px}
+.sec-title .seg{margin-bottom:12px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+@media (max-width:760px){.split{grid-template-columns:1fr}}
+.alert{padding:9px 12px;border-radius:9px;font-size:13px;margin-top:10px;line-height:1.6}
+.alert.bad{background:#fdecec;color:#b0282c}
+.alert.good{background:#e8f6ec;color:#1e7a3c}
+.alert.note{background:#fef6e4;color:#8f5400}
+.alert ol{margin:4px 0 0;padding-left:20px}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.cnt{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:4px}
+.cnt .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cnt.bad{border-color:var(--warn)}
+.rules{list-style:none;display:grid}
+.rules li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.rules li:first-child{border-top:0}
+.rules .nm{font-weight:700}
+.rules .ex{display:flex;gap:4px;align-items:center;margin-top:4px;flex-wrap:wrap}
+.rules .tag{font-size:11px;font-weight:700;color:var(--sub);border:1px solid var(--line);border-radius:6px;padding:1px 6px;white-space:nowrap}
+.rules li.off .nm,.rules li.off .ex{opacity:.45}
+.sw{appearance:none;-webkit-appearance:none;width:38px;height:22px;border-radius:11px;background:var(--line-strong);position:relative;cursor:pointer;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.sw:checked{background:var(--accent)}
+.sw:checked::after{left:19px}
+.strip{display:flex;gap:4px;flex-wrap:wrap;margin-top:10px}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;font-weight:600;border:0;background:var(--card);color:var(--sub);padding:6px 12px;cursor:pointer}
+.seg button.on{background:var(--accent-soft);color:var(--accent)}
+.prio{list-style:none;display:grid;gap:6px}
+.prio li{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--card)}
+.prio li.must{border-color:var(--accent);background:var(--accent-soft)}
+.prio li.off{opacity:.45}
+.prio .no{font-weight:800;color:var(--sub);text-align:center}
+.prio li.must .no{color:var(--accent)}
+.prio .grp{font-size:11.5px;color:var(--sub);font-weight:600;margin-left:6px}
+.prio .mv{display:flex;gap:4px}
+.prio .mv button{font:inherit;font-size:12px;font-weight:700;border:1px solid var(--line-strong);background:var(--card);color:var(--txt);border-radius:6px;padding:2px 8px;cursor:pointer}
+.prio .mv button:disabled{opacity:.3;cursor:default}
+.prio li.line{display:flex;justify-content:space-between;border:0;border-top:2px dashed var(--warn);border-radius:0;padding:8px 2px 4px;background:none;color:var(--warn);font-weight:800;font-size:12.5px}
+.lvl{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--sub);margin:0 0 10px}
+.lvl b{color:var(--txt)}
+.summary{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--accent-soft);border-radius:10px;padding:10px 12px;margin-top:12px}
+.summary .pill{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:600}
+.summary .pill.bad{border-color:var(--warn);color:var(--warn)}
+.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px 14px}
+.people label{display:grid;grid-template-columns:64px 1fr;align-items:center;gap:8px;font-weight:600;font-size:13px}
+.people label span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.people input{width:100%;min-width:0}
+.people input.bad{border-color:var(--warn)}
+.fixpill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 6px 3px 12px;font-weight:600;font-size:13px}
+.fixpill button{border:0;background:#e3e3e8;border-radius:50%;width:18px;height:18px;line-height:16px;cursor:pointer;font-size:11px;color:var(--sub)}
 @media print{
   header,.no-print{display:none!important}
   .gridwrap{max-height:none;overflow:visible;border:0}
@@ -128,6 +190,7 @@ table.set input[type=text]{width:110px}
   <h1>요양보호사 근무표</h1>
   <nav>
     <button data-tab="roster" class="on">근무표</button>
+    <button data-tab="rules">규칙</button>
     <button data-tab="calc">휴일계산</button>
     <button data-tab="pay">급여</button>
     <button data-tab="settings">설정</button>
@@ -137,6 +200,7 @@ table.set input[type=text]{width:110px}
 </header>
 <main>
   <section id="tab-roster"></section>
+  <section id="tab-rules" style="display:none"></section>
   <section id="tab-calc" style="display:none"></section>
   <section id="tab-pay" style="display:none"></section>
   <section id="tab-settings" style="display:none"></section>
@@ -159,7 +223,44 @@ function ruleLabel(r){
   if(r.type==='seq3')return `${crName(r.a)}, ${crName(r.b)} 다음 ${crName(r.c)} 금지`;
   return `${crName(r.a)} 연속 최대 ${r.n}일`;
 }
-function activeRules(){return (S.customRules||[]).filter(r=>r.on!==false);}
+function activeRules(rc){return ((rc||RC()).customRules||[]).filter(r=>r.on!==false);}
+/* ===== 규칙 묶음: 유닛별(S.unitRules[유닛]) 또는 공통(S.afCfg) ===== */
+function RC(unitId){
+  const id=unitId||S.ui.unitId;
+  return (S.unitRules||{})[id]||S.afCfg;
+}
+const RULE_KEYS=['mode','nAfterOff','noNV','noED','noDafterNOFF','maxRun','offMax','nCap','dCap','eCap','pattern','prio','customRules'];
+const PRIO_DEFAULT=['need','r:nAfterOff','r:noNV','pin','mxo','LINE','off','r:noED','mxw','CUSTOM','capN','r:noDafterNOFF','capDE','pat'];
+/* 우선순위 목록 정리: 빠진 규칙은 넣고 지운 직접 규칙은 뺌 (LINE = 여기까지 반드시 지킴) */
+function prioOf(rc){
+  const cids=(rc.customRules||[]).map(r=>'c:'+r.id);
+  let p=Array.isArray(rc.prio)&&rc.prio.length?rc.prio.slice():PRIO_DEFAULT.flatMap(x=>x==='CUSTOM'?cids:[x]);
+  p=p.filter(x=>x!=='CUSTOM'&&(!x.startsWith('c:')||cids.includes(x)));
+  for(const x of PRIO_DEFAULT)if(x!=='CUSTOM'&&!p.includes(x))p.push(x);
+  for(const c of cids)if(!p.includes(c)){const i=p.indexOf('pat');p.splice(i<0?p.length:i,0,c);}
+  return p;
+}
+function shiftChip(c,x){return `<span class="sc ${x?'sc-X':'sc-'+c}">${x?'금지 ':''}${c==='V'?'연':c==='W'?'근무':c}</span>`;}
+/* 규칙 하나하나의 이름·묶음·켜짐 여부 */
+function ruleInfo(rc,unit){
+  const nd=unit?unit.need:{};
+  const info={
+    need:{nm:'하루 필요인원',grp:'E'+(nd.E||0)+' D'+(nd.D||0)+' N'+(nd.N||0),on:true},
+    pin:{nm:'미리 정한 날 (연차·OFF·지정 근무)',grp:'근무표 탭',on:true},
+    off:{nm:'1인당 OFF 개수',grp:'1인당 개수',on:true},
+    mxo:{nm:'연속 OFF 최대 '+(rc.offMax||2)+'일',grp:'연속 제한',on:true},
+    mxw:{nm:'연속 근무 최대 '+(rc.maxRun||0)+'일',grp:'연속 제한',on:(rc.maxRun||0)>0},
+    capN:{nm:'1인당 N 개수'+(rc.nCap?' ('+rc.nCap+'개)':''),grp:'1인당 개수',on:!!rc.nCap},
+    capDE:{nm:'1인당 D·E 개수',grp:'1인당 개수',on:!!(rc.dCap||rc.eCap)},
+    pat:{nm:'패턴 순서 ('+(rc.pattern||'').split('').join(' ')+')',grp:'패턴',on:!!rc.pattern},
+    'r:nAfterOff':{nm:'N 다음날은 OFF',grp:'순서 규칙',on:!!rc.nAfterOff},
+    'r:noNV':{nm:'N 다음날 연차 금지',grp:'순서 규칙',on:!!rc.noNV},
+    'r:noED':{nm:'E 다음날 D 금지',grp:'순서 규칙',on:!!rc.noED},
+    'r:noDafterNOFF':{nm:'N, OFF 다음 D 금지',grp:'순서 규칙',on:!!rc.noDafterNOFF}
+  };
+  for(const r of rc.customRules||[])info['c:'+r.id]={nm:ruleLabel(r),grp:'순서 규칙 · 내 규칙',on:r.on!==false};
+  return info;
+}
 function parseAssign(str,nd){ // "5=D, 12-14=N" 또는 "5D 12N" → {day:code}
   const out={};
   for(const tok of String(str||'').split(/[,\s]+/)){
@@ -218,7 +319,8 @@ const DEFAULTS={
   pinOff:{}, // 직원별 OFF 고정일 { 'YYYY-MM': { staffId: [day,...] } }
   pinShift:{}, // 직원별 근무 사전 지정 { 'YYYY-MM': { staffId: {day:'D'|'E'|'S'|'N'} } }
   payCfg:{nightH:4}, // 야간 1회당 가산 환산시간 (8시간×0.5배 기준)
-  afCfg:{mode:'cycle',nAfterOff:true,noDafterNOFF:false,noED:true,maxRun:4,nCap:5,pattern:'SDENFF',v3:true,v5:true,v7:true,v8:true,v9:true,v10:true}, // 편성 방식·규칙 (저장됨)
+  afCfg:{mode:'cycle',nAfterOff:true,noNV:true,noDafterNOFF:false,noED:true,maxRun:4,offMax:2,nCap:5,pattern:'SDENFF',customRules:[],prio:null,v3:true,v5:true,v7:true,v8:true,v9:true,v10:true,v11:true}, // 편성 방식·규칙 (공통, 저장됨)
+  unitRules:{}, // 유닛별 규칙 { 유닛id: afCfg와 같은 모양 } — 없으면 공통 규칙 사용
   ui:{ym:'2026-07',unitId:'u1',calcYear:'2026'}
 };
 /* 대한민국 법정공휴일+대체공휴일 (근로자의날·제헌절 제외 — 기존 엑셀 집계 기준과 동일)
@@ -249,7 +351,10 @@ function load(){
   try{
     const raw=localStorage.getItem(LS_KEY);
     if(!raw) return structuredClone(DEFAULTS);
-    const d=JSON.parse(raw);
+    return migrate(JSON.parse(raw));
+  }catch(e){ return structuredClone(DEFAULTS); }
+}
+function migrate(d){
     for(const k of Object.keys(DEFAULTS)) if(d[k]===undefined) d[k]=structuredClone(DEFAULTS[k]);
     if(!d.afCfg.v3){d.afCfg={nAfterOff:true,noDafterNOFF:true,pattern:d.afCfg.pattern||'ESDNF',v3:true};} // 규칙 재정의 (2026-07 요청: N→OFF 무조건, N,OFF 뒤 D금지)
     if(d.afCfg.maxRun===undefined)d.afCfg.maxRun=4; // 5일 연속 근무 금지 (2026-07 요청)
@@ -265,8 +370,15 @@ function load(){
     if(!d.afCfg.v9){d.afCfg.noDafterNOFF=false;d.afCfg.v9=true;} // OFF 다음은 무엇이든 허용 (2026-08 사용자 요청)
     if(!d.afCfg.v10){if(d.afCfg.pattern==='ESDNFF')d.afCfg.pattern='SDENFF';d.afCfg.v10=true;} // 기준 문서 패턴 (2026-09)
     if(!d.pinShift)d.pinShift={}; // 근무 사전 지정 (2026-09)
+    if(!d.afCfg.v11){ // 규칙 탭 (2026-10): N 다음날 연차 금지 분리, OFF 연속 최대 설정, 내 규칙을 규칙 묶음 안으로
+      d.afCfg.noNV=d.afCfg.nAfterOff!==false;
+      d.afCfg.offMax=2;
+      d.afCfg.customRules=d.customRules||[];
+      d.afCfg.prio=null;
+      d.afCfg.v11=true;
+    }
+    if(!d.unitRules)d.unitRules={};
     return d;
-  }catch(e){ return structuredClone(DEFAULTS); }
 }
 let saveTimer=null;
 function save(){
@@ -304,7 +416,7 @@ document.querySelectorAll('nav button').forEach(b=>{
   b.onclick=()=>{
     document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
     b.classList.add('on');
-    ['roster','calc','pay','settings'].forEach(t=>{
+    ['roster','rules','calc','pay','settings'].forEach(t=>{
       document.getElementById('tab-'+t).style.display=(t===b.dataset.tab)?'':'none';
     });
     render();
@@ -362,6 +474,8 @@ function autoFill(opts){
   let restSlotsLeft=people.reduce((a,p)=>a+restOf(p),0);
   const shortage={}; let extraS=0;
   const custom=opts.custom||[];
+  const OM=opts.offMax||2; // OFF 연속 최대
+  const offFit=R=>Math.floor(OM*(R+1)/(OM+1)); // R일 남았을 때 OFF 연속 한도 안에서 쓸 수 있는 최대 휴무 수
   const cBad=(p,d,code)=>custom.length&&crBad(custom,code,grid[p.id][d-1]||'',grid[p.id][d-2]||'',k=>grid[p.id][d-k]||'');
   const presetLeft=p=>[...restRes[p.id]].filter(x=>x>curDay).length; // 오늘 이후 남은 지정연차·고정OFF
   let curDay=0;
@@ -391,7 +505,7 @@ function autoFill(opts){
       if(opts.nAfterOff&&nStreak[p.id]>=1){
         const rl=restLeft[p.id]-presetLeft(p);
         if(nn&&nStreak[p.id]===1&&contN.size<(opts.need.N||0)-pinNToday&&!(opts.maxRun&&wStreak[p.id]>=opts.maxRun)
-          &&rl<daysLeft&&rl<=Math.floor((2*(daysLeft-1)+2)/3)){contN.add(p.id);continue;}
+          &&rl<daysLeft&&rl<=offFit(daysLeft-1)){contN.add(p.id);continue;}
         resters.add(p.id);continue; // N 다음날 무조건 OFF (N N이면 둘째 N 다음날)
       }
       if(restLeft[p.id]-presetLeft(p)<=0)continue;
@@ -399,10 +513,10 @@ function autoFill(opts){
         if(wStreak[p.id]>=opts.maxRun){resters.add(p.id);continue;} // 연속 근무 한도 도달 → 강제 휴무
         /* 오늘 일하면 남은 휴무로 연속 한도를 못 지키게 되는 경우도 강제 휴무 (월말 5일 연속 방지, OFF 3연속은 만들지 않음) */
         const q=restLeft[p.id], m=opts.maxRun;
-        if(oStreak[p.id]<2&&(m-wStreak[p.id]-1)+q*(m+1)<daysLeft-1){resters.add(p.id);continue;}
+        if(oStreak[p.id]<OM&&(m-wStreak[p.id]-1)+q*(m+1)<daysLeft-1){resters.add(p.id);continue;}
       }
       /* 오늘 안 쉬면 남은 날에 휴무를 다 못 쓰는 사람 (OFF 2연속 제한 기준) → 강제 휴무 (월말 몰림 방지) */
-      if(oStreak[p.id]<2&&restLeft[p.id]-presetLeft(p)>Math.floor((2*(daysLeft-1)+2)/3)){resters.add(p.id);continue;}
+      if(oStreak[p.id]<OM&&restLeft[p.id]-presetLeft(p)>offFit(daysLeft-1)){resters.add(p.id);continue;}
       if(restLeft[p.id]>=daysLeft)resters.add(p.id);
     }
     let target=Math.round(restSlotsLeft/daysLeft);
@@ -412,9 +526,8 @@ function autoFill(opts){
         if(resters.has(p.id)||restLeft[p.id]-presetLeft(p)<=0)return false;
         if(pinsh[p.id].has(d))return false; // 근무 지정일 — 쉴 수 없음
         if(contN.has(p.id))return false; // 둘째 N 서는 날
-        if(oStreak[p.id]>=2)return false; // OFF는 이어서 2개까지만
-        if(pinned[p.id].has(d+1)&&pinned[p.id].has(d+2))return false; // 오늘 쉬면 고정 OFF와 3연속
-        if(oStreak[p.id]>=1&&pinned[p.id].has(d+1))return false;
+        if(oStreak[p.id]>=OM)return false; // OFF는 이어서 OM개까지만
+        {let k=0;while(pinned[p.id].has(d+1+k))k++;if(oStreak[p.id]+1+k>OM)return false;} // 오늘 쉬면 고정 OFF와 이어져 OFF 연속 초과
         if(cBad(p,d,'OFF'))return false; // 사용자 규칙
         /* 오늘 쉬면 남은 휴무로 연속 한도를 못 지키게 되는 사람은 휴무를 아껴둠 (월말 5일 연속 방지) */
         if(opts.maxRun){
@@ -490,7 +603,7 @@ function autoFill(opts){
           /* N 다음날은 무조건 OFF — 다음날이 지정 연차인 사람에게는 N 금지 */
           const nv=pool.filter(p=>!preset[p.id].has(d+1)&&!pinsh[p.id].has(d+1)
             &&!(nn&&(restRes[p.id].has(d+1)||preset[p.id].has(d+2)||pinsh[p.id].has(d+2)||(opts.maxRun&&wStreak[p.id]+2>opts.maxRun)
-              ||restLeft[p.id]-presetLeft(p)>Math.floor((2*Math.max(0,daysLeft-2)+2)/3)))); // N N이면 이틀 서고 쉴 수 있는 사람
+              ||restLeft[p.id]-presetLeft(p)>offFit(Math.max(0,daysLeft-2))))); // N N이면 이틀 서고 쉴 수 있는 사람
           if(nv.length){pool.length=0;pool.push(...nv);}
           /* 내일 쉴 몫이 없는 사람에게 N을 주면 OFF가 목표를 초과함 — 가능하면 제외 */
           const np=pool.filter(p=>restLeft[p.id]-presetLeft(p)>0);
@@ -539,12 +652,12 @@ function autoFill(opts){
     for(let dd=1;dd<=nd;dd++){
       const v=gv(p,dd);
       if(isW(v)){run++;if(opts.maxRun&&run>opts.maxRun)return false;}else run=0;
-      if(v==='OFF'){orun++;if(orun>2)return false;}else orun=0; // OFF는 이어서 2개까지만
+      if(v==='OFF'){orun++;if(orun>OM)return false;}else orun=0; // OFF는 이어서 OM개까지만
       if(opts.nAfterOff&&gv(p,dd-1)==='N'&&isW(v)&&!(nn&&v==='N'&&gv(p,dd-2)!=='N'))return false; // N 다음은 OFF (N N 패턴이면 둘째 N까지)
       if(opts.noED&&gv(p,dd-1)==='E'&&v==='D')return false; // E 다음날 D 금지
       if(opts.noDafterNOFF&&v==='D'&&(gv(p,dd-1)==='OFF'||gv(p,dd-1)==='V')&&gv(p,dd-2)==='N')return false; // N,OFF 다음 D 금지
       if(custom.length&&crBad(custom,v,gv(p,dd-1),gv(p,dd-2),k=>gv(p,dd-k)))return false; // 사용자 규칙
-      if(opts.nAfterOff&&v==='V'&&gv(p,dd-1)==='N')return false; // N 다음날 연차 금지
+      if(opts.noNV&&v==='V'&&gv(p,dd-1)==='N')return false; // N 다음날 연차 금지
     }
     return true;
   };
@@ -815,10 +928,10 @@ function cyclicFill(opts){
   const capC=c=>c==='N'?(opts.nCap||0):c==='D'?(opts.dCap||0):c==='E'?(opts.eCap||0):0;
   const CAPF=capC;
   const nAfterBad=(p,d,code)=>{ // N 다음 규칙 (N N 패턴이면 둘째 N까지 허용)
+    if(opts.noNV&&code==='N'&&d<nd&&val(p,d+1)==='V')return true; // N 다음날 연차 금지
     if(!opts.nAfterOff)return false;
     if(val(p,d-1)==='N'&&!(nnC&&code==='N'&&val(p,d-2)!=='N'))return true;
     if(code==='N'&&d<nd){const nx=val(p,d+1);
-      if(nx==='V')return true;
       if(isWorkCode(nx)&&!(nnC&&nx==='N'&&val(p,d-1)!=='N'))return true;}
     return false;
   };
@@ -956,7 +1069,7 @@ function cyclicFill(opts){
         let orun=0;for(let k=0;k>-12;k--){if(val(p,k)==='OFF')orun++;else break;}
         for(let dd=1;dd<=nd;dd++){const v=grid[p.id][dd];
           if(isWorkCode(v)){run++;if(opts.maxRun&&run>opts.maxRun)return false;}else run=0;
-          if(v==='OFF'){orun++;if(orun>2)return false;}else orun=0;}
+          if(v==='OFF'){orun++;if(orun>(opts.offMax||2))return false;}else orun=0;}
         return true;
       };
       outer:
@@ -1023,7 +1136,7 @@ function cyclicFill(opts){
     const v=grid[p.id][d]||'';
     if(!v)continue;
     if((opts.custom||[]).length&&crBad(opts.custom,v,val(p,d-1),val(p,d-2),k=>val(p,d-k)))customViol++;
-    if(opts.nAfterOff&&v==='V'&&val(p,d-1)==='N')customViol++; // N 다음날 연차 금지
+    if(opts.noNV&&v==='V'&&val(p,d-1)==='N')customViol++; // N 다음날 연차 금지
   }
   let offBad=0; // OFF 개수가 목표와 다른 사람 수 (개수 최우선 판단용)
   for(const p of people){
@@ -1033,10 +1146,207 @@ function cyclicFill(opts){
   return {shortage,extraS,notes,offBad,customViol,cycle:cyc,capacity:n*nd-people.reduce((a,p)=>a+Object.values(grid[p.id]).filter(v=>v==='OFF'||v==='V').length,0),need:baseNeed*nd,surplus:0};
 }
 
+/* ===== 규칙 검사기: 근무표 한 달을 모든 규칙으로 검사 (화면 경고·편성 결과·우선순위 비교 공용) =====
+   반환: byId[규칙id] = [{pid,day,msg,w}], cells['pid|day']=true(빨간 테두리), score[규칙id]=위반 수 */
+function checkRoster(ym,unitId){
+  const rc=RC(unitId), unit=unitById(unitId), people=unitStaff(unitId);
+  const [y,m]=ymParts(ym), nd=daysIn(y,m);
+  const prevYm=shiftYm(ym,-1),[ppy,ppm]=ymParts(prevYm),ndPrev=daysIn(ppy,ppm);
+  const cellRel=(pid,day)=> day>=1 ? getCell(ym,pid,day) : getCell(prevYm,pid,ndPrev+day);
+  const isW=x=>x==='D'||x==='E'||x==='S'||x==='N';
+  const offTarget=(S.offs[String(y)]||[])[m-1];
+  const pat=rc.pattern||'', nn=rc.nAfterOff&&pat.includes('NN');
+  const predOf={};
+  if(pat.length>=2)for(let i=0;i<pat.length;i++)(predOf[pat[i]]=predOf[pat[i]]||new Set()).add(pat[(i-1+pat.length)%pat.length]);
+  const custom=activeRules(rc);
+  const byId={},cells={},score={};
+  const add=(id,p,day,msg,w=1,mark=true)=>{(byId[id]=byId[id]||[]).push({pid:p&&p.id,day,msg,w});score[id]=(score[id]||0)+w;if(mark&&p&&day)cells[p.id+'|'+day]=true;};
+  const pinO=(S.pinOff||{})[ym]||{}, pinS=(S.pinShift||{})[ym]||{};
+  for(const p of people){
+    const cnt={D:0,E:0,S:0,N:0,OFF:0,V:0};
+    let run=0,orun=0;
+    for(let k=0;k<12;k++){if(isW(cellRel(p.id,-k)))run++;else break;}
+    for(let k=0;k<12;k++){if(cellRel(p.id,-k)==='OFF')orun++;else break;}
+    for(let d=1;d<=nd;d++){
+      const v=getCell(ym,p.id,d), prev=cellRel(p.id,d-1), prev2=cellRel(p.id,d-2);
+      if(v)cnt[v]++;
+      if(rc.nAfterOff&&prev==='N'&&isW(v)&&!(nn&&v==='N'&&prev2!=='N'))add('r:nAfterOff',p,d,`${p.name} ${d}일 (N 다음 ${v})`);
+      if(rc.noNV&&prev==='N'&&v==='V')add('r:noNV',p,d,`${p.name} ${d}일`);
+      if(rc.noED&&prev==='E'&&v==='D')add('r:noED',p,d,`${p.name} ${d}일`);
+      if(rc.noDafterNOFF&&v==='D'&&(prev==='OFF'||prev==='V')&&prev2==='N')add('r:noDafterNOFF',p,d,`${p.name} ${d}일`);
+      if(v&&custom.length){const cr=crBad(custom,v,prev,prev2,k=>cellRel(p.id,d-k));if(cr)add('c:'+cr.id,p,d,`${p.name} ${d}일`);}
+      run=isW(v)?run+1:0;
+      if(rc.maxRun>0&&run>rc.maxRun)add('mxw',p,d,`${p.name} ${d}일 (${run}일째)`,1);
+      orun=v==='OFF'?orun+1:0;
+      const om=rc.offMax||2;
+      if(orun>om)add('mxo',p,d,`${p.name} ${d}일 (OFF ${orun}일째)`);
+      if(!p.fix&&isW(v)&&predOf[v]&&prev){const pr=predOf[v];if(!((pr.has('F')&&(prev==='OFF'||prev==='V'))||pr.has(prev)))add('pat',p,d,'',1,false);}
+      if((pinO[p.id]||[]).includes(d)&&v!=='OFF')add('pin',p,d,`${p.name} ${d}일 (OFF로 정했는데 ${v||'빈칸'})`);
+      const ps=(pinS[p.id]||{})[d];
+      if(ps&&v!==ps)add('pin',p,d,`${p.name} ${d}일 (${ps}로 정했는데 ${v||'빈칸'})`);
+    }
+    if(offTarget!==undefined&&cnt.OFF!==offTarget)add('off',p,0,`${p.name} ${cnt.OFF}개 (목표 ${offTarget}개)`,Math.abs(cnt.OFF-offTarget));
+    if(!p.fix){
+      if(rc.nCap&&cnt.N>rc.nCap)add('capN',p,0,`${p.name} ${cnt.N}개 (기본 ${rc.nCap}개)`,cnt.N-rc.nCap);
+      if(rc.dCap&&cnt.D>rc.dCap)add('capDE',p,0,`${p.name} D ${cnt.D}개 (기본 ${rc.dCap}개)`,cnt.D-rc.dCap);
+      if(rc.eCap&&cnt.E>rc.eCap)add('capDE',p,0,`${p.name} E ${cnt.E}개 (기본 ${rc.eCap}개)`,cnt.E-rc.eCap);
+    }
+  }
+  if(unit)for(let d=1;d<=nd;d++)for(const c of ['E','D','N']){
+    const need=unit.need[c]||0;let have=0;
+    for(const p of people)if(getCell(ym,p.id,d)===c)have++;
+    if(have<need)add('need',null,d,`${d}일 ${c} ${need-have}명 부족`,need-have,false);
+  }
+  return {byId,cells,score};
+}
+/* 우선순위대로 편성: 모든 규칙으로 먼저 짜보고, 못 지킨 게 있으면 빨간 선 아래 규칙을 아래쪽부터 하나씩 양보하며 다시 짠다.
+   결과들은 "위쪽 규칙 위반이 적은 것"이 이기는 방식(순위 순서대로 비교)으로 고른다 */
+const DROPPABLE=id=>id.startsWith('r:')||id.startsWith('c:')||['mxw','mxo','capN','capDE','pat'].includes(id);
+function priorityFill(ym,unitId,offTarget){
+  const rc=RC(unitId), unit=unitById(unitId), people=unitStaff(unitId);
+  const prio=prioOf(rc), info=ruleInfo(rc,unit);
+  const order=prio.filter(x=>x!=='LINE'&&info[x]&&info[x].on);
+  const li=prio.indexOf('LINE');
+  const soft=prio.slice(li+1).filter(x=>info[x]&&info[x].on&&DROPPABLE(x)).reverse(); // 아래쪽부터
+  if(!S.roster[ym])S.roster[ym]={};
+  const snap=()=>{const o={};for(const p of people)o[p.id]=structuredClone(S.roster[ym][p.id]||{});return o;};
+  const restore=o=>{for(const p of people)S.roster[ym][p.id]=structuredClone(o[p.id]);};
+  const orig=snap();
+  const hasPins=people.some(p=>(((S.pinOff||{})[ym]||{})[p.id]||[]).length||Object.keys(((S.pinShift||{})[ym]||{})[p.id]||{}).length);
+  const less=(a,b)=>{for(let i=0;i<a.length;i++){if(a[i]!==b[i])return a[i]<b[i];}return false;};
+  const clean=v=>order.every((id,i)=>id==='pat'||v[i]===0);
+  let best=null,err=null;
+  const tryRun=drop=>{
+    const o={ym,unitId,need:{D:unit.need.D||0,E:unit.need.E||0,S:0,N:unit.need.N||0},off:offTarget,
+      nAfterOff:!!rc.nAfterOff&&!drop.has('r:nAfterOff'),
+      noNV:!!rc.noNV&&!drop.has('r:noNV'),
+      noED:!!rc.noED&&!drop.has('r:noED'),
+      noDafterNOFF:!!rc.noDafterNOFF&&!drop.has('r:noDafterNOFF'),
+      maxRun:drop.has('mxw')?0:(rc.maxRun||0),
+      offMax:drop.has('mxo')?31:(rc.offMax||2),
+      nCap:drop.has('capN')?0:(rc.nCap||0),
+      dCap:drop.has('capDE')?0:(rc.dCap||0),
+      eCap:drop.has('capDE')?0:(rc.eCap||0),
+      pattern:rc.pattern||'',
+      custom:activeRules(rc).filter(r=>!drop.has('c:'+r.id))};
+    const modes=(rc.mode!=='greedy'&&!hasPins&&!drop.has('pat'))?['cycle','greedy']:['greedy'];
+    for(const md of modes){
+      restore(orig);
+      const res=md==='cycle'?cyclicFill(o):autoFill(o);
+      if(res.error){err=res;return;}
+      const chk=checkRoster(ym,unitId);
+      const vec=order.map(id=>chk.score[id]||0);
+      if(!best||less(vec,best.vec))best={res,vec,grid:snap(),drop:[...drop],mode:md};
+      if(md==='cycle'&&clean(vec))break; // 순환이 다 지켰으면 자동 방식은 안 돌려봄
+    }
+  };
+  tryRun(new Set());
+  for(let k=1;!err&&k<=soft.length&&!clean(best.vec);k++)tryRun(new Set(soft.slice(0,k)));
+  if(err&&!best){restore(orig);return err;}
+  restore(best.grid);
+  /* 마무리 수리: 규칙에 걸린 칸마다 두 사람이 두 날짜를 맞바꿔 보고(일별 인원·각자 OFF 개수 그대로), 우선순위로 더 나아지면 채택 */
+  {
+    const t0=performance.now();
+    const lockOf=p=>{const s=new Set(((S.pinOff[ym]||{})[p.id]||[]));for(const d in ((S.pinShift[ym]||{})[p.id]||{}))s.add(+d);return s;};
+    const locks={};for(const p of people)locks[p.id]=lockOf(p);
+    const nd=daysIn(...ymParts(ym));
+    const vecNow=()=>{const c=checkRoster(ym,unitId);return {c,v:order.map(id=>c.score[id]||0)};};
+    const isWk=v=>v==='D'||v==='E'||v==='S'||v==='N';
+    let cur=vecNow(),rounds=0;
+    while(rounds++<40&&performance.now()-t0<2500){
+      const targets=[];
+      for(const id of order){if(id==='pat'||id==='need'||id==='off')continue;for(const x of (cur.c.byId[id]||[]))if(x.pid&&x.day)targets.push(x);}
+      if(!targets.length)break;
+      let improved=false;
+      tg:
+      for(const x of targets){
+        const p=people.find(q=>q.id===x.pid);
+        for(let dd=Math.max(1,x.day-(RC(unitId).maxRun||4));dd<=x.day;dd++){
+          const g=S.roster[ym];
+          const a=g[p.id][dd];
+          if(locks[p.id].has(dd)||a==='V')continue;
+          for(const q of people){
+            if(q===p)continue;
+            const b=g[q.id][dd];
+            if(locks[q.id].has(dd)||b==='V'||a===b)continue;
+            if(!((isWk(a)&&b==='OFF')||(a==='OFF'&&isWk(b))))continue;
+            if((q.fix&&isWk(a)&&q.fix!==a)||(p.fix&&isWk(b)&&p.fix!==b))continue;
+            for(let d2=1;d2<=nd;d2++){
+              if(d2===dd||locks[p.id].has(d2)||locks[q.id].has(d2))continue;
+              const c2=g[p.id][d2],e2=g[q.id][d2];
+              if(isWk(a)?!(c2==='OFF'&&isWk(e2)):!(isWk(c2)&&e2==='OFF'))continue; // d2에는 반대로 (p·q 각자 OFF 개수 그대로)
+              if((p.fix&&isWk(e2)&&p.fix!==e2)||(q.fix&&isWk(c2)&&q.fix!==c2))continue;
+              g[p.id][dd]=b;g[q.id][dd]=a;g[p.id][d2]=e2;g[q.id][d2]=c2;
+              const nv=vecNow();
+              if(less(nv.v,cur.v)){cur=nv;improved=true;break tg;}
+              g[p.id][dd]=a;g[q.id][dd]=b;g[p.id][d2]=c2;g[q.id][d2]=e2;
+            }
+          }
+        }
+      }
+      if(!improved)break;
+    }
+    best.vec=cur.v;
+  }
+  const r=best.res;
+  r.notes=r.notes||[];
+  if(rc.mode!=='greedy'&&hasPins)r.notes.unshift('미리 정한 날이 있어 개수 우선 방식으로 편성했습니다');
+  else if(rc.mode!=='greedy'&&best.mode==='greedy')r.notes.unshift('패턴 그대로는 규칙·개수를 다 못 맞추는 달이라, 개수를 우선으로 하고 패턴은 최대한 따르는 방식으로 편성했습니다');
+  const conceded=best.drop.filter(id=>id!=='pat'&&best.vec[order.indexOf(id)]>0);
+  if(conceded.length)r.notes.unshift('규칙끼리 부딪혀 아래쪽 규칙을 양보했습니다: '+conceded.map(id=>info[id].nm).join(', '));
+  r.cycle=best.mode==='cycle'?(rc.pattern||''):null;
+  if(best.mode!=='cycle'){r.shortage=r.shortage||{};}
+  return r;
+}
+
+/* 미리 정하기 글칸: "5=연, 12-14=OFF, 20=N" ↔ 연차(근무표 V)·OFF 고정(pinOff)·근무 지정(pinShift) */
+const PIN_CODE={'연':'V','연차':'V','V':'V','휴':'V','OFF':'OFF','O':'OFF','F':'OFF','오프':'OFF','D':'D','E':'E','S':'S','N':'N'};
+function parsePins(str,nd){
+  const out={},bad=[];
+  for(const tok0 of String(str||'').split(/[,，\s]+/)){
+    const tok=tok0.trim();if(!tok)continue;
+    const mm=tok.match(/^(\d+)(?:\s*[-~]\s*(\d+))?\s*=?\s*([A-Za-z가-힣]+)$/);
+    const code=mm&&PIN_CODE[mm[3].toUpperCase()]||mm&&PIN_CODE[mm[3]];
+    if(!mm||!code){bad.push(tok);continue;}
+    const a=+mm[1],b=mm[2]?+mm[2]:a;
+    for(let d=a;d<=Math.min(b,nd);d++)if(d>=1)out[d]=code;
+  }
+  return {pins:out,bad};
+}
+function pinsText(ym,pid){
+  const cur=(S.roster[ym]||{})[pid]||{};
+  const all={};
+  for(const d of Object.keys(cur))if(cur[d]==='V')all[+d]='연';
+  for(const d of (((S.pinOff||{})[ym]||{})[pid]||[]))all[+d]='OFF';
+  const ps=((S.pinShift||{})[ym]||{})[pid]||{};
+  for(const d of Object.keys(ps))all[+d]=ps[d];
+  const days=Object.keys(all).map(Number).sort((a,b)=>a-b),parts=[];
+  for(let i=0;i<days.length;){
+    let j=i;while(j+1<days.length&&days[j+1]===days[j]+1&&all[days[j+1]]===all[days[i]])j++;
+    parts.push((j>i?days[i]+'-'+days[j]:days[i])+'='+all[days[i]]);i=j+1;
+  }
+  return parts.join(', ');
+}
+function applyPins(ym,pid,pins){
+  if(!S.pinOff[ym])S.pinOff[ym]={};
+  if(!S.pinShift[ym])S.pinShift[ym]={};
+  const cur=(S.roster[ym]||{})[pid]||{};
+  for(const d of Object.keys(cur))if(cur[d]==='V'&&pins[d]!=='V')setCell(ym,pid,+d,'');
+  const off=[],sh={};
+  for(const d in pins){
+    const c=pins[d];
+    if(c==='V')setCell(ym,pid,+d,'V');
+    else if(c==='OFF')off.push(+d);
+    else sh[d]=c;
+  }
+  if(off.length)S.pinOff[ym][pid]=off.sort((a,b)=>a-b);else delete S.pinOff[ym][pid];
+  if(Object.keys(sh).length)S.pinShift[ym][pid]=sh;else delete S.pinShift[ym][pid];
+}
+
 /* ===== 근무표 탭 ===== */
 let brush='D';
 let painting=false;
-let autoOpen=false;
+let pinMode='text', pinBrush='OFF';
 let genResult=null;
 let crFormOpen=false, crType='seq2';
 document.addEventListener('mouseup',()=>{painting=false;});
@@ -1057,7 +1367,6 @@ function renderRoster(){
     </div>
     <select id="unitSel">${S.units.map(u=>`<option value="${u.id}" ${unit&&u.id===unit.id?'selected':''}>${esc(u.name)}</option>`).join('')}</select>
     <div class="spacer"></div>
-    <button class="btn primary" id="autoBtn">자동 편성</button>
     <button class="btn" id="copyPrev">전월 복사</button>
     <button class="btn" id="xlsBtn">엑셀 내보내기</button>
     <label class="btn" style="cursor:pointer">엑셀 불러오기<input type="file" id="xlsIn" accept=".xlsx,.xls,.csv" style="display:none"></label>
@@ -1065,107 +1374,41 @@ function renderRoster(){
     <button class="btn danger" id="clearM">이달 지우기</button>
   </div>`;
 
-  if(autoOpen){
-    const offDefault=(S.offs[String(y)]||[])[m-1]??9;
-    const nd0=daysIn(y,m);
-    html+=`<div style="margin-top:12px;padding:12px;background:#f7f9fc;border:1px solid var(--line);border-radius:10px">
-    <div class="row">
-      <b>하루 필요인원</b>
-      ${ORD().filter(c=>c!=='S').map(c=>`<label>${c} <input type="number" min="0" max="20" id="af-${c}" value="${unit?unit.need[c]||0:0}"></label>`).join('')}
-      <span class="hint">하루에 필요한 인원. 남는 인력은 전부 S로 들어갑니다 (S는 입력하지 않음)</span>
-      <button class="btn primary" id="afRun">편성 실행</button>
-    </div>
-    <div class="row" style="margin-top:8px">
-      <b>1인당 한 달 기본</b>
-      ${(()=>{
-        const nP=unit?unitStaff(unit.id).filter(p=>!p.fix).length:0;
-        const avg=c=>nP?((unit.need[c]||0)*nd0/nP):0;
-        const capOf={D:S.afCfg.dCap,E:S.afCfg.eCap,N:S.afCfg.nCap};
-        const idOf={D:'af-capD',E:'af-capE',N:'af-ncap'};
-        return ORD().filter(c=>c!=='S').map(c=>`<label>${c} <input type="number" min="0" max="31" id="${idOf[c]}" value="${capOf[c]||''}" placeholder="${avg(c).toFixed(1)}"></label>`).join('');
-      })()}
-      <label>OFF <input type="number" min="0" max="20" id="af-off" value="${offDefault}"></label>
-      <span class="hint">비워두면 자동으로 고르게. 칸 안 회색 숫자 = 필요한 평균 — 이보다 1 이상 크게 잡아야 대부분 맞춰집니다 (넘은 칸은 오른쪽 합계에 빨간색). OFF는 모든 직원 같은 개수.</span>
-    </div>
-    <div class="row" style="margin-top:8px">
-      <b style="font-size:13px">방식</b>
-      <label><input type="radio" name="af-mode" value="cycle" ${S.afCfg.mode!=='greedy'?'checked':''}> 순환 <span class="hint">패턴 기본 + D·E·N·OFF 개수는 무조건 기준대로 맞춤 (기준표 방식)</span></label>
-      <label><input type="radio" name="af-mode" value="greedy" ${S.afCfg.mode==='greedy'?'checked':''}> 자동 <span class="hint">매일 필요인원에 맞춰 채움</span></label>
-    </div>
-    <div class="row" style="margin-top:8px">
-      <b style="font-size:13px">편성 규칙</b>
-      <label><input type="checkbox" id="af-nafteroff" ${S.afCfg.nAfterOff?'checked':''}> N &rarr; OFF</label>
-      <label><input type="checkbox" id="af-noed" ${S.afCfg.noED?'checked':''}> E 다음날 D 금지</label>
-      <label><input type="checkbox" id="af-nod" ${S.afCfg.noDafterNOFF?'checked':''}> N, OFF 다음 D 금지</label>
-      <label>연속 근무 최대 <input type="number" id="af-maxrun" min="0" max="10" value="${S.afCfg.maxRun??4}" style="width:52px">일 <span class="hint">(4 또는 5 권장, 0 = 제한 없음)</span></label>
-      <span style="font-size:13px">OFF 연속 최대 2일</span>
-      <span style="font-size:13px">N 다음날 연차 금지</span>
-      <label class="pat-label">패턴 <select id="af-pat">
-        ${[['SDENFF','S D E N F F'],['SDENNFF','S D E N N F F'],['DSENNFF','D S E N N F F'],['DSENFF','D S E N F F'],['ESDNFF','E S D N F F'],['ESDNF','E S D N F']].map(([v,l])=>`<option value="${v}" ${S.afCfg.pattern===v?'selected':''}>${l}</option>`).join('')}
-      </select></label>
-      <span class="hint">F = 휴무. 패턴에 N N이 있으면 N은 2일 연속까지 서고 그 다음 OFF. 전월 마지막 날도 이어서 봅니다.</span>
-    </div>
-    <div class="row" style="margin-top:8px">
-      <b style="font-size:13px">내 규칙</b>
-      ${(S.customRules||[]).map(r=>`<label style="background:#eef1f5;border-radius:8px;padding:3px 8px;display:inline-flex;align-items:center;gap:5px">
-        <input type="checkbox" data-cr-on="${r.id}" ${r.on!==false?'checked':''}> ${ruleLabel(r)}
-        <button data-cr-del="${r.id}" style="border:0;background:#dde1e7;border-radius:50%;width:17px;height:17px;line-height:15px;cursor:pointer;font-size:11px;color:var(--sub)">×</button></label>`).join('')||'<span class="hint">아직 만든 규칙 없음</span>'}
-      <button class="btn" id="crAddBtn">규칙 추가</button>
-    </div>
-    ${crFormOpen?`<div class="row" style="margin-top:8px;padding:8px;background:#fff;border:1px dashed var(--line);border-radius:8px">
-      <select id="cr-type">
-        <option value="seq2" ${crType==='seq2'?'selected':''}>어제 → 오늘 금지</option>
-        <option value="seq3" ${crType==='seq3'?'selected':''}>그제 + 어제 → 오늘 금지</option>
-        <option value="run" ${crType==='run'?'selected':''}>연속 최대 일수</option>
-      </select>
-      ${crType==='seq2'?`
-        <label>어제 <select id="cr-a">${CR_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>
-        <label>오늘 금지 <select id="cr-b">${CR_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>`
-      :crType==='seq3'?`
-        <label>그제 <select id="cr-a">${CR_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>
-        <label>어제 <select id="cr-b">${CR_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>
-        <label>오늘 금지 <select id="cr-c">${CR_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>`
-      :`
-        <label>근무 <select id="cr-a">${CR_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>
-        <label>연속 최대 <input type="number" id="cr-n" min="1" max="10" value="2" style="width:52px">일</label>`}
-      <button class="btn primary" id="crSave">저장</button>
-      <span class="hint">저장하면 자동 편성이 지키고, 손으로 어기면 경고가 뜹니다</span>
-    </div>`:''}
-    <div style="margin-top:10px"><b style="font-size:13px">직원별 연차일</b>
-      <button class="btn" id="afClearV" style="padding:3px 10px;font-size:12px;margin-left:6px">연차 전부 지우기</button>
-      <span class="hint">여러 날은 쉼표(5, 12), 연속은 붙임표(12-14 = 12·13·14일). 적은 날짜에만 연차가 들어가고 그날을 피해서 짭니다. 비워두면 그 사람은 연차 없이 편성됩니다.</span>
-      <div class="row" style="margin-top:6px;gap:8px">
-      ${(unit?unitStaff(unit.id):[]).map(p=>{
-        const cur=(S.roster[ym]&&S.roster[ym][p.id])||{};
-        const vdays=Object.keys(cur).filter(d=>cur[d]==='V').map(Number).sort((a,b)=>a-b).join(', ');
-        return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px">${esc(p.name)} <input type="text" data-vdays="${p.id}" value="${vdays}" placeholder="예: 5, 12-14" style="width:110px;padding:4px 6px"></label>`;
-      }).join('')}
-      </div>
-    </div>
-    <div style="margin-top:10px"><b style="font-size:13px">직원별 OFF 고정일</b>
-      <span class="hint">이 날짜는 무조건 OFF로 놓고 편성합니다 (오프 개수에 포함, 쓰는 법은 연차일과 동일). OFF 다음날은 어떤 근무든 올 수 있습니다.</span>
-      <div class="row" style="margin-top:6px;gap:8px">
-      ${(unit?unitStaff(unit.id):[]).map(p=>{
-        const odays=(((S.pinOff||{})[ym]||{})[p.id]||[]).join(', ');
-        return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px">${esc(p.name)} <input type="text" data-odays="${p.id}" value="${odays}" placeholder="예: 3, 20-21" style="width:110px;padding:4px 6px"></label>`;
-      }).join('')}
-      </div>
-    </div>
-    <div style="margin-top:10px"><b style="font-size:13px">직원별 근무 지정</b>
-      <span class="hint">특정 날짜의 근무를 미리 정합니다. 쓰는 법: 5=D, 12=N (연속은 12-14=N). 그 날은 그 근무로 고정됩니다.</span>
-      <div class="row" style="margin-top:6px;gap:8px">
-      ${(unit?unitStaff(unit.id):[]).map(p=>{
-        const raw=(((S.pinShift||{})[ym]||{})[p.id]||{});
-        const sdays=Object.keys(raw).map(Number).sort((a,b)=>a-b).map(d=>d+'='+raw[d]).join(', ');
-        return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px">${esc(p.name)} <input type="text" data-sdays="${p.id}" value="${sdays}" placeholder="예: 5=D, 12=N" style="width:120px;padding:4px 6px"></label>`;
-      }).join('')}
-      </div>
-    </div>
-    <p class="hint" style="margin-top:8px">남는 인력은 S 추가 배치. 고정 근무 직원(설정 탭에서 지정)은 그 근무만 맡습니다. 실행하면 이 유닛의 ${y}년 ${m}월(${nd0}일) 배정을 새로 만듭니다.</p>
+  {
+    const rc=RC(unit&&unit.id), info=ruleInfo(rc,unit);
+    const offT=(S.offs[String(y)]||[])[m-1];
+    const nOrd=info['r:nAfterOff'].on+info['r:noNV'].on+info['r:noED'].on+info['r:noDafterNOFF'].on+activeRules(rc).length;
+    const caps=[rc.eCap?'E'+rc.eCap:'',rc.dCap?'D'+rc.dCap:'',rc.nCap?'N'+rc.nCap:'','OFF'+(offT??'-')].filter(Boolean).join(' · ');
+    html+=`<div class="summary">
+      <b style="font-size:13px">적용 규칙${unit&&(S.unitRules||{})[unit.id]?' (이 유닛 전용)':' (모든 유닛 공통)'}</b>
+      ${unit?`<span class="pill">하루 ${ORD().filter(c=>c!=='S').map(c=>c+(unit.need[c]||0)).join(' ')}</span>`:''}
+      <span class="pill">1인당 ${caps}</span>
+      <span class="pill">연속 근무 ${rc.maxRun?rc.maxRun+'일':'제한 없음'} · OFF ${rc.offMax||2}일</span>
+      <span class="pill">순서 규칙 ${nOrd}개</span>
+      <span class="pill">${rc.mode==='greedy'?'자동 방식':'순환'} · 패턴 ${(rc.pattern||'').split('').join(' ')}</span>
+      <button class="btn" id="goRules" style="padding:4px 10px;font-size:13px">규칙 바꾸기</button>
     </div>`;
   }
-
-  html+=`<div class="row" style="margin-top:10px">
+  html+=`</div>`;
+  if(unit&&people.length){
+    html+=`<div class="card no-print">
+    <div class="sec-title"><h2>직원별 미리 정하기</h2>
+      <div class="seg"><button data-pm="text" class="${pinMode==='text'?'on':''}">글로 적기</button><button data-pm="click" class="${pinMode==='click'?'on':''}">칸 눌러서 정하기</button></div></div>`;
+    if(pinMode==='text'){
+      html+=`<p class="lead">한 사람당 한 칸. <b>날짜=근무</b>로 적고 쉼표로 이어 씁니다. 연=연차, OFF, D, E, S, N. 연속은 12-14=OFF. 적은 날은 그대로 두고 나머지를 편성합니다.</p>
+      <div class="people">${people.map(p=>`<label title="${esc(p.name)}"><span>${esc(p.name)}</span><input type="text" data-pin="${p.id}" value="${esc(pinsText(ym,p.id))}" placeholder="예: 5=연, 12=N"></label>`).join('')}</div>
+      <div id="pinMsg"></div>`;
+    }else{
+      html+=`<p class="lead">근무를 고르고 아래 근무표 칸을 누르면 그 날이 미리 정해집니다 (점선 밑줄). 같은 근무로 한 번 더 누르면 풀립니다.</p>
+      <div class="palette" id="pinPal">${[...ORD(),'OFF','V'].map(c=>`<button class="pal-${c} ${pinBrush===c?'sel':''}" data-pb="${c}">${c==='V'?'연차':c}</button>`).join('')}
+        <button class="pal-X ${pinBrush===''?'sel':''}" data-pb="">풀기</button></div>`;
+    }
+    html+=`<div class="row" style="justify-content:flex-end;margin-top:14px">
+      <button class="btn" id="afClearV">연차 전부 지우기</button>
+      <button class="btn primary" id="afRun">편성 실행</button></div></div>`;
+  }
+  html+=`<div class="card no-print" style="padding:12px 20px">
+  <div class="row">
     <span class="hint">배정할 근무를 고른 뒤 칸을 클릭하거나 드래그하세요.</span>
     <div class="palette" id="palette">
       ${[...ORD(),'OFF','V'].map(c=>`<button class="pal-${c} ${brush===c?'sel':''}" data-b="${c}">${c==='V'?'연차':c}</button>`).join('')}
@@ -1188,61 +1431,21 @@ function renderRoster(){
   html+=ORD().map(c=>`<th>${c}</th>`).join('')+`<th>OFF</th><th>연차</th><th>근무</th>`;
   html+=`</tr></thead><tbody>`;
 
-  const warns=[];
-  // 전월 말일 이월용: day<=0이면 전월의 (말일+day)로 조회
-  const prevYm=shiftYm(ym,-1),[ppy,ppm]=ymParts(prevYm),ndPrev=daysIn(ppy,ppm);
-  const cellRel=(pid,day)=> day>=1 ? getCell(ym,pid,day) : getCell(prevYm,pid,ndPrev+day);
-  const maxRun=S.afCfg.maxRun??0;
+  const rc=RC(unit.id);
+  const chk=checkRoster(ym,unit.id);
   for(const p of people){
     html+=`<tr><td class="namecol">${esc(p.name)}${p.fix?` <span style="color:var(--sub);font-weight:400;font-size:11px">${p.fix}고정</span>`:''}</td>`;
     const cnt={D:0,E:0,S:0,N:0,OFF:0,V:0};
-    // 전월 말 연속 근무·연속 OFF 이월
-    let run=0,offRun=0;
-    for(let k=0;k<10;k++){const pv=cellRel(p.id,-k);if(pv==='D'||pv==='E'||pv==='S'||pv==='N')run++;else break;}
-    for(let k=0;k<10;k++){if(cellRel(p.id,-k)==='OFF')offRun++;else break;}
     for(let d=1;d<=nd;d++){
       const v=getCell(ym,p.id,d);
       if(v)cnt[v]++;
-      // 규칙 위반 경고 (전월 말일 이월 포함): N 다음은 OFF, N·OFF 뒤 D 금지
-      let nw='';
-      const prev=cellRel(p.id,d-1), prev2=cellRel(p.id,d-2);
-      const isWork=x=>x==='D'||x==='E'||x==='S'||x==='N';
-      if(prev==='N'&&isWork(v)&&!((S.afCfg.pattern||'').includes('NN')&&v==='N'&&prev2!=='N')){
-        nw='nwarn';
-        warns.push(`${p.name}: ${d}일 — N 다음날은 OFF여야 하는데 ${v} 배정`);
-      }
-      if(prev==='N'&&v==='V'){
-        nw='nwarn';
-        warns.push(`${p.name}: ${d}일 — N 다음날 연차 금지 (OFF여야 함)`);
-      }
-      if(S.afCfg.noED&&prev==='E'&&v==='D'){
-        nw='nwarn';
-        warns.push(`${p.name}: ${d}일 — E 다음날 D 금지`);
-      }
-      if(S.afCfg.noDafterNOFF&&v==='D'&&(prev==='OFF'||prev==='V')&&prev2==='N'){
-        nw='nwarn';
-        warns.push(`${p.name}: ${d}일 — N, OFF 다음 D 금지`);
-      }
-      if(v){ // 사용자 규칙 검사 (전월 경계 포함)
-        const cr=crBad(activeRules(),v,prev,prev2,k=>cellRel(p.id,d-k));
-        if(cr){nw='nwarn';warns.push(`${p.name}: ${d}일 — ${ruleLabel(cr)}`);}
-      }
-      run=isWork(v)?run+1:0;
-      if(maxRun>0&&run>maxRun){
-        nw='nwarn';
-        if(run===maxRun+1)warns.push(`${p.name}: ${d}일 — ${maxRun+1}일 연속 근무 (최대 ${maxRun}일)`);
-      }
-      offRun=v==='OFF'?offRun+1:0;
-      if(offRun>2){
-        nw='nwarn';
-        if(offRun===3)warns.push(`${p.name}: ${d}일 — OFF 3일 연속 (최대 2일)`);
-      }
-      const isPin=(v==='OFF'&&(((S.pinOff||{})[ym]||{})[p.id]||[]).includes(d))||((((S.pinShift||{})[ym]||{})[p.id]||{})[d]===v);
-      html+=`<td class="cell ${v?'v-'+v:''} ${nw} ${isPin?'pinned':''}" data-p="${p.id}" data-d="${d}" ${isPin?'title="미리 지정한 날"':''}>${v==='V'?'연':v}</td>`;
+      const nw=chk.cells[p.id+'|'+d]?'nwarn':'';
+      const isPin=v==='V'||(((S.pinOff||{})[ym]||{})[p.id]||[]).includes(d)||!!((((S.pinShift||{})[ym]||{})[p.id]||{})[d]);
+      html+=`<td class="cell ${v?'v-'+v:''} ${nw} ${isPin?'pinned':''}" data-p="${p.id}" data-d="${d}" ${isPin?'title="미리 정한 날"':''}>${v==='V'?'연':v}</td>`;
     }
     const workDays=cnt.D+cnt.E+cnt.S+cnt.N;
     const offCls=offTarget===undefined?'':(cnt.OFF===offTarget?'good':'bad');
-    const capT={D:S.afCfg.dCap,E:S.afCfg.eCap,N:S.afCfg.nCap};
+    const capT={D:rc.dCap,E:rc.eCap,N:rc.nCap};
     html+=ORD().map(c=>`<td class="sum ${capT[c]&&cnt[c]>capT[c]&&!p.fix?'bad':''}" ${capT[c]?`title="1인당 기본 ${capT[c]}개"`:''}>${cnt[c]}</td>`).join('')+`
       <td class="sum ${offCls}" title="목표 오프수 ${offTarget??'-'}개">${cnt.OFF}${offTarget!==undefined?'/'+offTarget:''}</td>
       <td class="sum">${cnt.V||''}</td><td class="sum">${workDays}</td></tr>`;
@@ -1277,20 +1480,35 @@ function renderRoster(){
     ${[...ORD(),'OFF','V'].map(c=>`<span><i style="background:var(--c-${c})"></i>${c==='V'?'연차':c}</span>`).join('')}
     <span>아래 합계: 빨강=필요인원 미달, 주황=초과</span>
   </div>`;
-  if(warns.length){
-    html+=`<div class="warnbox"><b>확인 필요 ${warns.length}건</b><br>${warns.map(esc).join('<br>')}</div>`;
-  }
-  if(genResult){
-    const sh=Object.entries(genResult.shortage||{});
-    if(genResult.error){
-      html+=`<div class="warnbox">편성 실패: ${esc(genResult.error)}</div>`;
-    }else{
-      html+=`<div class="warnbox" style="background:#f0f9f1;border-color:#b7dfc0;color:#1e7a3c">
-      <b>편성 완료${genResult.cycle?` — 순환 (${genResult.cycle.split('').join(' ')})`:''}</b> — 가용 ${genResult.capacity}명-일 / 필요 ${genResult.need}명-일
-      ${genResult.extraS?` (S 추가 근무 ${genResult.extraS}건)`:''}
-      ${sh.length?`<br><span style="color:var(--warn)">부족한 날: ${sh.map(([d,v])=>d+'일('+v.join(',')+')').join(', ')}</span>`:'<br>모든 날짜 필요인원 충족'}
-      ${genResult.notes&&genResult.notes.length?`<br><span style="color:var(--over)">${genResult.notes.join('<br>')}</span>`:''}
-      </div>`;
+  html+=`<div class="legend"><span style="text-decoration:underline dotted 2px">점선 밑줄</span> = 미리 정한 날 <span style="color:var(--warn);font-weight:700">빨간 테두리</span> = 규칙에 걸린 칸</div>`;
+  /* 편성 결과 + 규칙 검사 (우선순위 순) */
+  {
+    const info=ruleInfo(rc,unit), prio=prioOf(rc), li=prio.indexOf('LINE');
+    const filled=people.some(p=>Object.keys((S.roster[ym]||{})[p.id]||{}).some(d=>getCell(ym,p.id,+d)&&getCell(ym,p.id,+d)!=='V'));
+    html+=`<h3 style="margin-top:18px">편성 결과</h3>`;
+    if(genResult&&genResult.error)html+=`<div class="alert bad">편성 실패: ${esc(genResult.error)}</div>`;
+    if(genResult&&!genResult.error){
+      html+=`<div class="alert note"><b>편성 완료${genResult.cycle?` — 순환 (${genResult.cycle.split('').join(' ')})`:''}</b> — 가용 ${genResult.capacity}명-일 / 필요 ${genResult.need}명-일${genResult.extraS?` (S 추가 근무 ${genResult.extraS}건)`:''}
+      ${genResult.notes&&genResult.notes.length?'<br>'+genResult.notes.map(esc).join('<br>'):''}</div>`;
+    }
+    if(!filled){html+=`<div class="hint" style="margin-top:8px">아직 배정이 없습니다. 위의 「편성 실행」을 누르거나 칸을 직접 칠하세요.</div>`;}
+    else{
+      let n=0;const items=[];
+      prio.forEach((id,i)=>{
+        if(id==='LINE')return;
+        n++;
+        const it=info[id];if(!it||!it.on)return;
+        const list=chk.byId[id];if(!list||!list.length)return;
+        if(id==='pat')return; // 패턴은 「되도록」이라 아래에 따로
+        const must=i<li;
+        const shown=list.slice(0,8).map(x=>esc(x.msg)).join(', ')+(list.length>8?` 외 ${list.length-8}곳`:'');
+        items.push(`<li${must?' style="font-weight:700"':''}>[${n}순위${must?' · 반드시':''}] ${esc(it.nm)} — ${shown}</li>`);
+      });
+      const offT=offTarget;
+      if(!items.length)html+=`<div class="alert good">모든 규칙을 지켰습니다 · 모든 날짜 필요인원 충족${offT!==undefined?` · 전원 OFF ${offT}개`:''}</div>`;
+      else html+=`<div class="alert bad"><b>규칙에 걸린 곳 ${items.length}가지</b> (위쪽 순위가 더 중요)<ol>${items.join('')}</ol></div>`;
+      const pc=(chk.byId.pat||[]).length;
+      if(info.pat.on&&pc)html+=`<div class="hint" style="margin-top:6px">패턴 순서와 다른 곳 ${pc}곳 (패턴은 되도록만 따릅니다)</div>`;
     }
   }
   html+=`</div>`;
@@ -1309,6 +1527,16 @@ function renderRoster(){
     td.addEventListener('mouseover',()=>{if(painting)paint(td);});
   });
   function paint(td){
+    if(pinMode==='click'){ // 미리 정하기: 칸을 누르면 그 날을 고정 (같은 근무로 다시 누르면 풀림)
+      const pid=td.dataset.p,d=+td.dataset.d;
+      const pins=parsePins(pinsText(ym,pid),nd).pins;
+      if(pinBrush===''||pins[d]===pinBrush){if(pins[d]==='V')setCell(ym,pid,d,'');delete pins[d];}
+      else{pins[d]=pinBrush;if(pinBrush!=='V')setCell(ym,pid,d,pinBrush);}
+      applyPins(ym,pid,pins);save();
+      const v=getCell(ym,pid,d);
+      td.className='cell '+(v?'v-'+v:'')+(pins[d]?' pinned':'');td.textContent=v==='V'?'연':v;
+      return;
+    }
     setCell(ym,td.dataset.p,+td.dataset.d,brush);
     save();
     // 드래그 중 전체 재렌더는 무겁고 포커스가 튐 → 칸만 즉시 갱신, 합계는 mouseup에서
@@ -1321,29 +1549,19 @@ function bindRosterTop(){
   root.querySelector('#prevM').onclick=()=>{S.ui.ym=shiftYm(S.ui.ym,-1);genResult=null;save();render();};
   root.querySelector('#nextM').onclick=()=>{S.ui.ym=shiftYm(S.ui.ym,1);genResult=null;save();render();};
   root.querySelector('#unitSel').onchange=e=>{S.ui.unitId=e.target.value;genResult=null;save();render();};
-  root.querySelector('#autoBtn').onclick=()=>{autoOpen=!autoOpen;render();};
-  const crAdd=root.querySelector('#crAddBtn');
-  if(crAdd)crAdd.onclick=()=>{crFormOpen=!crFormOpen;render();};
-  const crTypeSel=root.querySelector('#cr-type');
-  if(crTypeSel)crTypeSel.onchange=e=>{crType=e.target.value;render();};
-  const crSave=root.querySelector('#crSave');
-  if(crSave)crSave.onclick=()=>{
-    const g=id=>root.querySelector('#'+id)?.value;
-    const r={id:uid(),type:crType,a:g('cr-a'),b:g('cr-b'),c:g('cr-c'),n:+g('cr-n')||2,on:true};
-    if(r.type==='seq2'&&r.a===r.b&&r.a!=='W'){alert('어제와 오늘이 같으면 "연속 최대 일수" 형태를 쓰세요.');return;}
-    S.customRules.push(r);crFormOpen=false;save();render();
-  };
-  root.querySelectorAll('[data-cr-on]').forEach(cb=>{
-    cb.onchange=()=>{
-      const r=S.customRules.find(x=>x.id===cb.dataset.crOn);
-      if(r){r.on=cb.checked;save();render();}
-    };
-  });
-  root.querySelectorAll('[data-cr-del]').forEach(b=>{
-    b.onclick=()=>{
-      const r=S.customRules.find(x=>x.id===b.dataset.crDel);
-      if(!confirm(`「${ruleLabel(r)}」 규칙을 삭제할까요?`))return;
-      S.customRules=S.customRules.filter(x=>x.id!==r.id);save();render();
+  const goRules=root.querySelector('#goRules');
+  if(goRules)goRules.onclick=()=>document.querySelector('nav button[data-tab="rules"]').click();
+  root.querySelectorAll('[data-pm]').forEach(b=>{b.onclick=()=>{pinMode=b.dataset.pm;render();};});
+  root.querySelectorAll('[data-pb]').forEach(b=>{b.onclick=()=>{pinBrush=b.dataset.pb;root.querySelectorAll('[data-pb]').forEach(x=>x.classList.toggle('sel',x===b));};});
+  const[ry,rm]=ymParts(S.ui.ym), rnd=daysIn(ry,rm);
+  root.querySelectorAll('input[data-pin]').forEach(inp=>{
+    inp.onchange=()=>{
+      const r=parsePins(inp.value,rnd);
+      const msg=root.querySelector('#pinMsg');
+      if(r.bad.length){inp.classList.add('bad');if(msg)msg.innerHTML=`<div class="alert bad">알아볼 수 없는 부분: ${esc(r.bad.join(', '))} — 예: 5=연, 12-14=OFF, 20=N</div>`;return;}
+      inp.classList.remove('bad');
+      applyPins(S.ui.ym,inp.dataset.pin,r.pins);save();
+      setTimeout(()=>{const nx=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.pin;render();if(nx){const el=document.querySelector(`input[data-pin="${nx}"]`);if(el)el.focus();}},0);
     };
   });
   const afClearV=root.querySelector('#afClearV');
@@ -1361,69 +1579,15 @@ function bindRosterTop(){
     const cur=S.roster[S.ui.ym];
     const people=unitStaff(S.ui.unitId);
     const hasData=cur&&people.some(p=>cur[p.id]&&Object.keys(cur[p.id]).length);
-    if(hasData&&!confirm('이 유닛의 이번 달 배정을 새로 편성합니다. 지정한 연차일은 그대로 유지됩니다. 계속할까요?'))return;
-    /* 입력칸의 근무 지정 저장 */
-    if(!S.pinShift)S.pinShift={};
-    if(!S.pinShift[S.ui.ym])S.pinShift[S.ui.ym]={};
-    {
-      const[py2,pm2]=ymParts(S.ui.ym), pnd2=daysIn(py2,pm2);
-      for(const p of people){
-        const sinp=root.querySelector(`input[data-sdays="${p.id}"]`);
-        if(!sinp)continue;
-        const asg=parseAssign(sinp.value,pnd2);
-        if(Object.keys(asg).length)S.pinShift[S.ui.ym][p.id]=asg; else delete S.pinShift[S.ui.ym][p.id];
-      }
+    if(hasData&&!confirm('이 유닛의 이번 달 배정을 새로 편성합니다. 미리 정한 날은 그대로 유지됩니다. 계속할까요?'))return;
+    /* 미리 정하기 글칸 반영 */
+    for(const inp of root.querySelectorAll('input[data-pin]')){
+      const r=parsePins(inp.value,rnd);
+      if(r.bad.length){alert(`알아볼 수 없는 부분이 있습니다: ${r.bad.join(', ')}\n예: 5=연, 12-14=OFF, 20=N`);inp.focus();return;}
+      applyPins(S.ui.ym,inp.dataset.pin,r.pins);
     }
-    /* 입력칸의 OFF 고정일 저장 */
-    const[gy,gm]=ymParts(S.ui.ym), gnd=daysIn(gy,gm);
-    if(!S.pinOff)S.pinOff={};
-    if(!S.pinOff[S.ui.ym])S.pinOff[S.ui.ym]={};
-    for(const p of people){
-      const oinp=root.querySelector(`input[data-odays="${p.id}"]`);
-      if(!oinp)continue;
-      const od=parseDays(oinp.value,gnd);
-      if(od.length)S.pinOff[S.ui.ym][p.id]=od; else delete S.pinOff[S.ui.ym][p.id];
-    }
-    /* 입력칸의 연차일을 먼저 반영 (기존 연차 표시는 입력값으로 교체) */
-    for(const p of people){
-      const inp=root.querySelector(`input[data-vdays="${p.id}"]`);
-      if(!inp)continue;
-      const days=new Set(parseDays(inp.value,gnd));
-      const curP=(S.roster[S.ui.ym]||{})[p.id]||{};
-      for(const d of Object.keys(curP))if(curP[d]==='V')setCell(S.ui.ym,p.id,+d,'');
-      for(const d of days)setCell(S.ui.ym,p.id,d,'V');
-    }
-    const opts={
-      ym:S.ui.ym, unitId:S.ui.unitId,
-      need:{D:+root.querySelector('#af-D').value||0, E:+root.querySelector('#af-E').value||0,
-            S:0, N:+root.querySelector('#af-N').value||0}, // S는 남는 인력이 자동으로 채움
-      off:+root.querySelector('#af-off').value||0,
-      nAfterOff:root.querySelector('#af-nafteroff').checked,
-      noED:root.querySelector('#af-noed').checked,
-      noDafterNOFF:root.querySelector('#af-nod').checked, // N,OFF 다음 D 금지 (2026-07 재도입)
-      maxRun:Math.max(0,+root.querySelector('#af-maxrun').value||0),
-      nCap:Math.max(0,+root.querySelector('#af-ncap').value||0),
-      dCap:Math.max(0,+root.querySelector('#af-capD').value||0),
-      eCap:Math.max(0,+root.querySelector('#af-capE').value||0),
-      pattern:root.querySelector('#af-pat').value.toUpperCase().replace(/[^DESNF]/g,''),
-      custom:activeRules()
-    };
-    const mode=root.querySelector('input[name="af-mode"]:checked').value;
-    S.afCfg={...S.afCfg,mode,nAfterOff:opts.nAfterOff,noED:opts.noED,noDafterNOFF:opts.noDafterNOFF,maxRun:opts.maxRun,nCap:opts.nCap,dCap:opts.dCap,eCap:opts.eCap,pattern:opts.pattern}; // 기존 마이그레이션 표시는 유지
-    const hasPins=people.some(p=>((S.pinOff[S.ui.ym]||{})[p.id]||[]).length||Object.keys(((S.pinShift||{})[S.ui.ym]||{})[p.id]||{}).length);
-    genResult=(mode==='cycle'&&!hasPins)?cyclicFill(opts):autoFill(opts);
-    if(mode==='cycle'&&hasPins&&!genResult.error){
-      genResult.notes=genResult.notes||[];
-      genResult.notes.unshift('OFF 고정일·근무 지정이 있어 개수 우선 방식으로 편성했습니다');
-    }
-    /* 개수 최우선: 순환으로 D·E·N·OFF 개수가 하나라도 안 맞으면 자동(패턴 우선) 방식으로 재편성 */
-    if(mode==='cycle'&&!hasPins&&!genResult.error&&(Object.keys(genResult.shortage||{}).length||genResult.offBad||genResult.customViol)){
-      genResult=autoFill(opts);
-      if(!genResult.error){
-        genResult.notes=genResult.notes||[];
-        genResult.notes.unshift('패턴 그대로는 D·E·N·OFF 개수를 못 맞추는 달이라, 개수를 우선으로 하고 패턴은 최대한 따르는 방식으로 편성했습니다');
-      }
-    }
+    const offT=(S.offs[String(ry)]||[])[rm-1]??9;
+    genResult=priorityFill(S.ui.ym,S.ui.unitId,offT);
     if(!genResult.error)save();
     render();
   };
@@ -1740,6 +1904,185 @@ function renderPay(){
   });
 }
 
+/* ===== 규칙 탭 ===== */
+function renderRules(){
+  const root=document.getElementById('tab-rules');
+  const unit=unitById(S.ui.unitId)||S.units[0];
+  if(!unit){root.innerHTML=`<div class="card">설정 탭에서 유닛을 먼저 추가하세요.</div>`;return;}
+  S.ui.unitId=unit.id;
+  const own=!!(S.unitRules||{})[unit.id];
+  const rc=RC(unit.id), info=ruleInfo(rc,unit), prio=prioOf(rc);
+  const [y,m]=ymParts(S.ui.ym), nd=daysIn(y,m);
+  const people=unitStaff(unit.id), nP=people.filter(p=>!p.fix).length;
+  const offT=(S.offs[String(y)]||[])[m-1];
+  const DEN=ORD().filter(c=>c!=='S');
+  let h=`<div class="card"><div class="row">
+    <label class="row" style="gap:6px;font-weight:600">유닛 <select id="ruUnit">${S.units.map(u=>`<option value="${u.id}" ${u.id===unit.id?'selected':''}>${esc(u.name)} (${unitStaff(u.id).length}명)</option>`).join('')}</select></label>
+    <div class="seg"><button data-scope="unit" class="${own?'on':''}">이 유닛만</button><button data-scope="all" class="${own?'':'on'}">모든 유닛 똑같이</button></div>
+    <div class="spacer"></div>
+    <span class="hint">여기서 바꾼 규칙은 다음 「편성 실행」부터 적용됩니다</span>
+  </div>
+  <p class="hint" style="margin-top:6px">${own?`「${esc(unit.name)}」 유닛 전용 규칙을 고치는 중입니다. 다른 유닛은 영향 없음.`:'모든 유닛이 같이 쓰는 공통 규칙을 고치는 중입니다. (하루 필요인원만 유닛마다 따로)'}</p></div>`;
+
+  /* 규칙 우선순위 */
+  const li=prio.indexOf('LINE');let n=0;
+  h+=`<div class="card"><div class="sec-title"><h2>규칙 우선순위</h2><button class="btn" id="prioReset">처음 순서로</button></div>
+  <p class="lead">규칙끼리 부딪혀서 다 못 지킬 때, <b>아래쪽 규칙부터 양보</b>합니다. 위·아래 버튼으로 순서를 바꾸세요.</p>
+  <div class="lvl"><span><b>빨간 선 위</b> = 반드시 지킴 (양보하지 않음, 그래도 못 지키면 결과에 빨갛게 알려줌)</span><span><b>빨간 선 아래</b> = 되도록 지킴 (필요하면 아래부터 양보)</span></div>
+  <ol class="prio">${prio.map((id,i)=>{
+    const mv=`<span class="mv"><button data-up="${i}" ${i===0?'disabled':''}>위</button><button data-dn="${i}" ${i===prio.length-1?'disabled':''}>아래</button></span>`;
+    if(id==='LINE')return `<li class="line"><span>여기까지 반드시 지킴</span>${mv}</li>`;
+    n++;const it=info[id]||{nm:id,grp:'',on:false};
+    return `<li class="${i<li?'must':''} ${it.on?'':'off'}"><span class="no">${n}</span><span>${esc(it.nm)}<span class="grp">${esc(it.grp)}${it.on?'':' · 꺼짐'}</span></span>${mv}</li>`;
+  }).join('')}</ol></div>`;
+
+  /* 하루 필요인원 + 연속 제한 */
+  h+=`<div class="split"><div class="card"><h2>하루 필요인원 <span class="hint">(${esc(unit.name)})</span></h2>
+    <p class="lead">매일 꼭 있어야 하는 인원. 남는 인력은 전부 S로 들어갑니다.</p>
+    <div class="row">${DEN.map(c=>`<label class="row" style="gap:6px">${shiftChip(c)}<input type="number" min="0" max="20" data-need="${c}" value="${unit.need[c]||0}"></label>`).join('')}</div>
+    <p class="hint" style="margin-top:10px">설정 탭의 유닛 필요인원과 같은 값입니다. 한 곳에서만 고치면 됩니다.</p></div>
+  <div class="card"><h2>연속 제한</h2>
+    <p class="lead">한 사람이 이어서 할 수 있는 최대 일수.</p>
+    <div class="row" style="gap:18px">
+      <label class="row" style="gap:6px;font-weight:600">근무 최대 <input type="number" min="0" max="10" id="ruMaxRun" value="${rc.maxRun||0}">일</label>
+      <label class="row" style="gap:6px;font-weight:600">OFF 최대 <input type="number" min="1" max="10" id="ruOffMax" value="${rc.offMax||2}">일</label>
+    </div>
+    <p class="hint" style="margin-top:10px">전월 마지막 날부터 이어서 셉니다. 근무 0 = 제한 없음.</p></div></div>`;
+
+  /* 1인당 한 달 개수 */
+  const capOf={D:rc.dCap,E:rc.eCap,N:rc.nCap}, capKey={D:'dCap',E:'eCap',N:'nCap'};
+  const msgs=[];
+  h+=`<div class="card"><div class="sec-title"><h2>1인당 한 달 개수</h2><span class="hint">${m}월 ${nd}일 · ${esc(unit.name)} 교대 ${nP}명 기준</span></div>
+  <p class="lead">비워두면 자동으로 고르게. 회색은 필요한 평균이고, 평균보다 1 이상 크게 잡아야 대부분 맞춰집니다.</p><div class="grid4">`;
+  for(const c of DEN){
+    const avg=nP?(unit.need[c]||0)*nd/nP:0, v=capOf[c]||'';
+    const bad=v!==''&&+v<avg;
+    if(bad)msgs.push(`<b>${c} ${v}개는 맞출 수 없습니다.</b> 하루 ${unit.need[c]||0}명 × ${nd}일 = ${(unit.need[c]||0)*nd}개를 ${nP}명이 나누면 평균 ${avg.toFixed(1)}개입니다. ${Math.ceil(avg+1e-9)} 이상으로 잡으세요.`);
+    h+=`<div class="cnt ${bad?'bad':''}"><div class="top">${shiftChip(c)}<input type="number" min="0" max="31" data-cap="${capKey[c]}" value="${v}" placeholder="${avg.toFixed(1)}"></div><span class="hint">필요 평균 ${avg.toFixed(1)}개</span></div>`;
+  }
+  {
+    const base=DEN.reduce((a,c)=>a+(unit.need[c]||0),0);
+    const workPer=nd-(offT??0);
+    if(people.length&&offT!==undefined&&base*nd>people.length*workPer)msgs.push(`<b>OFF ${offT}개면 일손이 모자랍니다.</b> 하루 ${base}명 × ${nd}일 = ${base*nd}명-일이 필요한데, ${people.length}명 × ${workPer}일 = ${people.length*workPer}명-일뿐입니다.`);
+    h+=`<div class="cnt"><div class="top">${shiftChip('OFF')}<input type="number" min="0" max="20" id="ruOff" value="${offT??''}"></div><span class="hint">모든 직원 같은 개수 · 휴일계산 탭 ${y}년 ${m}월 값</span></div>`;
+  }
+  h+=`</div>${msgs.length?msgs.map(x=>`<div class="alert bad">${x}</div>`).join(''):'<div class="alert good">지금 개수로 맞출 수 있습니다.</div>'}</div>`;
+
+  /* 순서 규칙 (기본 + 직접 만든 규칙) */
+  const BUILT=[
+    {k:'nAfterOff',nm:'N 다음날은 OFF',ex:[['N'],['OFF']],note:(rc.pattern||'').includes('NN')?'패턴에 N N이 있으면 둘째 N까지 서고 OFF':''},
+    {k:'noED',nm:'E 다음날 D 금지',ex:[['E'],['D',1]]},
+    {k:'noNV',nm:'N 다음날 연차 금지',ex:[['N'],['V',1]]},
+    {k:'noDafterNOFF',nm:'N, OFF 다음 D 금지',ex:[['N'],['OFF'],['D',1]]}
+  ];
+  const exHtml=ex=>ex.map(([c,x])=>shiftChip(c,x)).join('<span class="hint">→</span>');
+  const crEx=r=>r.type==='seq2'?exHtml([[r.a],[r.b,1]]):r.type==='seq3'?exHtml([[r.a],[r.b],[r.c,1]]):exHtml([...Array(Math.min(+r.n||1,4))].map(()=>[r.a]).concat([[r.a,1]]));
+  h+=`<div class="card"><div class="sec-title"><h2>순서 규칙</h2><button class="btn" id="crAddBtn">${crFormOpen?'닫기':'+ 규칙 추가'}</button></div>
+  <p class="lead">어제·오늘 근무 순서에 대한 규칙. 기본 규칙과 직접 만든 규칙이 한 목록에 있습니다.</p>
+  <ul class="rules">${BUILT.map(b=>`<li class="${rc[b.k]?'':'off'}"><input type="checkbox" class="sw" data-bt="${b.k}" ${rc[b.k]?'checked':''} aria-label="${b.nm} 켜기">
+    <div><div class="nm">${b.nm}</div><div class="ex">${exHtml(b.ex)}${b.note?`<span class="hint" style="margin-left:6px">${b.note}</span>`:''}</div></div><span class="tag">기본</span></li>`).join('')}
+  ${(rc.customRules||[]).map(r=>`<li class="${r.on!==false?'':'off'}"><input type="checkbox" class="sw" data-cr-on="${r.id}" ${r.on!==false?'checked':''} aria-label="${esc(ruleLabel(r))} 켜기">
+    <div><div class="nm">${esc(ruleLabel(r))}</div><div class="ex">${crEx(r)}</div></div>
+    <span class="row" style="gap:6px"><span class="tag">내 규칙</span><button class="btn" data-cr-del="${r.id}" style="padding:3px 9px;font-size:12px">삭제</button></span></li>`).join('')}</ul>
+  ${crFormOpen?`<div class="row" style="margin-top:8px;padding:10px;border:1px dashed var(--line-strong);border-radius:10px">
+      <select id="cr-type">
+        <option value="seq2" ${crType==='seq2'?'selected':''}>어제 → 오늘 금지</option>
+        <option value="seq3" ${crType==='seq3'?'selected':''}>그제 + 어제 → 오늘 금지</option>
+        <option value="run" ${crType==='run'?'selected':''}>연속 최대 일수</option>
+      </select>
+      ${crType==='seq2'?`
+        <label>어제 <select id="cr-a">${CR_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>
+        <label>오늘 금지 <select id="cr-b">${CR_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>`
+      :crType==='seq3'?`
+        <label>그제 <select id="cr-a">${CR_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>
+        <label>어제 <select id="cr-b">${CR_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>
+        <label>오늘 금지 <select id="cr-c">${CR_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>`
+      :`
+        <label>근무 <select id="cr-a">${CR_OPTS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label>
+        <label>연속 최대 <input type="number" id="cr-n" min="1" max="10" value="2" style="width:52px">일</label>`}
+      <button class="btn primary" id="crSave">저장</button>
+      <span class="hint">저장하면 자동 편성이 지키고, 손으로 어기면 근무표에 빨간 테두리가 뜹니다</span>
+    </div>`:''}</div>`;
+
+  /* 패턴 */
+  const PATS=[['SDENFF','S D E N F F'],['SDENNFF','S D E N N F F'],['DSENNFF','D S E N N F F'],['DSENFF','D S E N F F'],['ESDNFF','E S D N F F'],['ESDNF','E S D N F']];
+  const pat=rc.pattern||'SDENFF';
+  const fN=[...pat].filter(c=>c==='F').length, nN=[...pat].filter(c=>c==='N').length;
+  const offM=fN/pat.length*nd, nM=nN/pat.length*nd;
+  const fit=offT!==undefined&&Math.abs(offM-offT)<0.6;
+  h+=`<div class="card"><h2>패턴</h2>
+  <p class="lead">되도록 이 순서로 돌립니다. 위의 개수·규칙이 우선입니다 (우선순위에서 「패턴 순서」 위치로 조정).</p>
+  <div class="row">
+    <select id="ruPat">${PATS.map(([v,l])=>`<option value="${v}" ${pat===v?'selected':''}>${l}</option>`).join('')}</select>
+    <span class="hint">F = 휴무</span>
+    <span style="color:var(--line)">|</span>
+    <b style="font-size:13px">방식</b>
+    <label><input type="radio" name="ru-mode" value="cycle" ${rc.mode!=='greedy'?'checked':''}> 순환 <span class="hint">패턴 기본 + 개수는 기준대로</span></label>
+    <label><input type="radio" name="ru-mode" value="greedy" ${rc.mode==='greedy'?'checked':''}> 자동 <span class="hint">매일 필요인원에 맞춰 채움</span></label>
+  </div>
+  <div class="strip">${[...Array(14)].map((_,i)=>{const c=pat[i%pat.length];return shiftChip(c==='F'?'OFF':c);}).join('')}</div>
+  <div class="alert ${fit?'good':'note'}">이 패턴대로면 한 달 OFF 약 ${offM.toFixed(1)}개, N 약 ${nM.toFixed(1)}개. ${offT===undefined?'':fit?`OFF ${offT}개와 잘 맞습니다.`:`정한 OFF ${offT}개와 달라서, 개수를 먼저 맞추고 패턴은 되도록만 따릅니다.`}</div></div>`;
+
+  /* 고정 근무 직원 */
+  const fixed=people.filter(p=>p.fix), free=people.filter(p=>!p.fix);
+  h+=`<div class="card"><h2>고정 근무 직원 <span class="hint">(${esc(unit.name)})</span></h2>
+  <p class="lead">항상 같은 근무만 서는 직원. 설정 탭 직원 명단에서 바꾼 것과 같습니다.</p>
+  <div class="row">${fixed.map(p=>`<span class="fixpill">${esc(p.name)} · ${shiftChip(p.fix)} 고정 <button data-unfix="${p.id}" title="고정 풀기">×</button></span>`).join('')||'<span class="hint">없음</span>'}</div>
+  ${free.length?`<div class="row" style="margin-top:10px">
+    <select id="fxP">${free.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
+    <select id="fxC">${ORD().map(c=>`<option value="${c}" ${c==='S'?'selected':''}>${c} 고정</option>`).join('')}</select>
+    <button class="btn" id="fxAdd">+ 고정 직원 추가</button></div>`:''}</div>`;
+
+  root.innerHTML=h;
+  const done=()=>{save();renderRules();};
+  root.querySelector('#ruUnit').onchange=e=>{S.ui.unitId=e.target.value;genResult=null;done();};
+  root.querySelectorAll('[data-scope]').forEach(b=>{b.onclick=()=>{
+    if(b.dataset.scope==='unit'&&!own){
+      const c={};for(const k of RULE_KEYS)c[k]=structuredClone(S.afCfg[k]??null);
+      c.customRules=c.customRules||[];
+      S.unitRules[unit.id]=c;done();
+    }else if(b.dataset.scope==='all'&&own){
+      if(!confirm(`「${unit.name}」 전용 규칙을 지우고 모든 유닛 공통 규칙을 씁니다. 계속할까요?`))return;
+      delete S.unitRules[unit.id];done();
+    }
+  };});
+  root.querySelector('#prioReset').onclick=()=>{rc.prio=null;done();};
+  const mv=(i,j)=>{const p=prioOf(rc);[p[i],p[j]]=[p[j],p[i]];rc.prio=p;done();};
+  root.querySelectorAll('[data-up]').forEach(b=>{b.onclick=()=>mv(+b.dataset.up,+b.dataset.up-1);});
+  root.querySelectorAll('[data-dn]').forEach(b=>{b.onclick=()=>mv(+b.dataset.dn,+b.dataset.dn+1);});
+  root.querySelectorAll('input[data-need]').forEach(inp=>{inp.onchange=()=>{unit.need[inp.dataset.need]=Math.max(0,+inp.value||0);done();};});
+  root.querySelector('#ruMaxRun').onchange=e=>{rc.maxRun=Math.max(0,+e.target.value||0);done();};
+  root.querySelector('#ruOffMax').onchange=e=>{rc.offMax=Math.max(1,+e.target.value||2);done();};
+  root.querySelectorAll('input[data-cap]').forEach(inp=>{inp.onchange=()=>{rc[inp.dataset.cap]=Math.max(0,+inp.value||0);done();};});
+  root.querySelector('#ruOff').onchange=e=>{
+    const yr=String(y);if(!S.offs[yr])S.offs[yr]=Array(12).fill(9);
+    S.offs[yr][m-1]=Math.max(0,+e.target.value||0);done();
+  };
+  root.querySelectorAll('input[data-bt]').forEach(cb=>{cb.onchange=()=>{rc[cb.dataset.bt]=cb.checked;done();};});
+  root.querySelectorAll('[data-cr-on]').forEach(cb=>{cb.onchange=()=>{const r=rc.customRules.find(x=>x.id===cb.dataset.crOn);if(r){r.on=cb.checked;done();}};});
+  root.querySelectorAll('[data-cr-del]').forEach(b=>{b.onclick=()=>{
+    const r=rc.customRules.find(x=>x.id===b.dataset.crDel);
+    if(!r||!confirm(`「${ruleLabel(r)}」 규칙을 삭제할까요?`))return;
+    rc.customRules=rc.customRules.filter(x=>x.id!==r.id);if(rc.prio)rc.prio=rc.prio.filter(x=>x!=='c:'+r.id);done();
+  };});
+  root.querySelector('#crAddBtn').onclick=()=>{crFormOpen=!crFormOpen;renderRules();};
+  const crTypeSel=root.querySelector('#cr-type');
+  if(crTypeSel)crTypeSel.onchange=e=>{crType=e.target.value;renderRules();};
+  const crSave=root.querySelector('#crSave');
+  if(crSave)crSave.onclick=()=>{
+    const g=id=>root.querySelector('#'+id)?.value;
+    const r={id:uid(),type:crType,a:g('cr-a'),b:g('cr-b'),c:g('cr-c'),n:+g('cr-n')||2,on:true};
+    if(r.type==='seq2'&&r.a===r.b&&r.a!=='W'){alert('어제와 오늘이 같으면 "연속 최대 일수" 형태를 쓰세요.');return;}
+    if(!rc.customRules)rc.customRules=[];
+    rc.customRules.push(r);crFormOpen=false;done();
+  };
+  root.querySelector('#ruPat').onchange=e=>{rc.pattern=e.target.value;done();};
+  root.querySelectorAll('input[name="ru-mode"]').forEach(r=>{r.onchange=()=>{rc.mode=r.value;done();};});
+  root.querySelectorAll('[data-unfix]').forEach(b=>{b.onclick=()=>{const p=S.staff.find(x=>x.id===b.dataset.unfix);if(p){p.fix='';done();}};});
+  const fxAdd=root.querySelector('#fxAdd');
+  if(fxAdd)fxAdd.onclick=()=>{const p=S.staff.find(x=>x.id===root.querySelector('#fxP').value);if(p){p.fix=root.querySelector('#fxC').value;done();}};
+}
+
 /* ===== 설정 탭 ===== */
 function renderSettings(){
   const root=document.getElementById('tab-settings');
@@ -1901,7 +2244,7 @@ function renderSettings(){
         const d=JSON.parse(r.result);
         if(!d.units||!d.roster)throw new Error('형식 오류');
         if(!confirm('현재 데이터를 백업 파일 내용으로 교체합니다. 계속할까요?'))return;
-        S=d;save();render();
+        S=migrate(d);save();render();
       }catch(err){alert('백업 파일을 읽을 수 없습니다: '+err.message);}
     };
     r.readAsText(f);
@@ -1912,6 +2255,7 @@ function renderSettings(){
 function render(){
   const t=activeTab();
   if(t==='roster')renderRoster();
+  else if(t==='rules')renderRules();
   else if(t==='calc')renderCalc();
   else if(t==='pay')renderPay();
   else renderSettings();
